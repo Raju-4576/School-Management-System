@@ -1,32 +1,41 @@
 const mongoose = require("mongoose");
 const techerSchema = new mongoose.Schema({
   name: {
-    type:String,
+    type: String,
   },
   email: {
-    type:String
+    type: String,
+    unique: true,
   },
-  password:{
-    type:String
+  password: {
+    type: String,
   },
-  role:{
-    type:String
+  role: {
+    type: String,
   },
-  class:{
-    type:[String]
+  class: {
+    type: [String],
   },
-  sub:{
-    type:[String]
+  sub: {
+    type: [String],
   },
-  phone:{
-    type:Number
+  phone: {
+    type: Number,
   },
-  address:{
-    type:String
+  address: {
+    type: String,
   },
-  batch:{
-    type:String
-  }
+  batch: {
+    type: String,
+  },
+  join_date: {
+    type: String,
+  },
+  c_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Class",
+    required: [true, "class Id is required"],
+  },
 });
 
 module.exports = mongoose.model("teacher", techerSchema);

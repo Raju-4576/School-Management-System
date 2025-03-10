@@ -1,6 +1,13 @@
 const Joi = require("joi");
-const name=["teacher","Teacher", "student","Student", "admin","Admin"]
-const batch=["Morning","morning","MORNING","AFTERNOON","Afternoon","afternoon"]
+const name = ["teacher", "Teacher", "student", "Student", "admin", "Admin"];
+const batch = [
+  "Morning",
+  "morning",
+  "MORNING",
+  "AFTERNOON",
+  "Afternoon",
+  "afternoon",
+];
 const teacherValidationSchema = Joi.object({
   name: Joi.string().trim().min(3).max(10).required().messages({
     "string.empty": "Name is Should not empty.",
@@ -9,11 +16,21 @@ const teacherValidationSchema = Joi.object({
     "any.required": "Name field is required.",
   }),
 
-  email: Joi.string().email().required().messages({
-    "string.email": "Please provide a valid email address.",
-    "string.empty": "Email is required.",
-    "any.required": "Email field is required.",
-  }),
+  email: Joi.string()
+    .email()
+    .custom((value, helpers) => {
+      if (value !== value.toLowerCase()) {
+        return helpers.error("any.invalid");
+      }
+      return value;
+    })
+    .required()
+    .messages({
+      "string.email": "Please provide a valid email address.",
+      "string.empty": "Email is required.",
+      "any.required": "Email field is required.",
+      "any.invalid": "Email must be in lowercase.",
+    }),
 
   password: Joi.string()
     .min(6)
@@ -28,11 +45,14 @@ const teacherValidationSchema = Joi.object({
       "string.pattern.base": "In the password one number and one character.",
     }),
 
-  role: Joi.string().valid(...name).required().messages({
-    "any.only": "Role must be 'Teacher','Student' or 'Admin' .",
-    "string.empty": "Role is required.",
-    "any.required": "Role field is required.",
-  }),
+  role: Joi.string()
+    .valid(...name)
+    .required()
+    .messages({
+      "any.only": "Role must be 'Teacher','Student' or 'Admin' .",
+      "string.empty": "Role is required.",
+      "any.required": "Role field is required.",
+    }),
 
   class: Joi.array()
     .items(
@@ -41,7 +61,7 @@ const teacherValidationSchema = Joi.object({
         .min(1)
         .messages({ "string.empty": "Class cannot be empty." })
     )
-    // .min(1)
+    .min(1)
     .required()
     .messages({
       "array.base": "Class must be an array of strings.",
@@ -77,14 +97,24 @@ const teacherValidationSchema = Joi.object({
     "string.max": "Address must not exceed 255 characters.",
     "any.required": "Address number is required.",
     "string.empty": "address is required.",
-
   }),
 
-  batch: Joi.string().valid(...batch).required().messages({
-    "any.only": "Batch must be either 'morning' or 'afternoon'.",
-    "string.empty": "Batch is required.",
-    "any.required": "Batch field is required.",
-  }),
+  batch: Joi.string()
+    .valid(...batch)
+    .required()
+    .messages({
+      "any.only": "Batch must be either 'morning' or 'afternoon'.",
+      "string.empty": "Batch is required.",
+      "any.required": "Batch field is required.",
+    }),
+  join_date: Joi.string()
+    .pattern(/^\d{2}-\d{2}-\d{4}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "Join date must be in the format DD-MM-YYYY.",
+      "string.empty": "Join date is not Empty.",
+      "any.required": "Join date field is required.",
+    }),
 });
 
 module.exports = teacherValidationSchema;
