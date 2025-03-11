@@ -1,5 +1,5 @@
 const Joi = require("joi");
-const name = ["teacher", "Teacher", "student", "Student", "admin", "Admin"];
+// const name = ["teacher", "Teacher", "student", "Student", "admin", "Admin"];
 const batch = [
   "Morning",
   "morning",
@@ -46,10 +46,10 @@ const teacherValidationSchema = Joi.object({
     }),
 
   role: Joi.string()
-    .valid(...name)
+    .valid('teacher')
     .required()
     .messages({
-      "any.only": "Role must be 'Teacher','Student' or 'Admin' .",
+      "any.only": "Role must be 'Teacher' .",
       "string.empty": "Role is required.",
       "any.required": "Role field is required.",
     }),

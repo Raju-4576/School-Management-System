@@ -31,6 +31,9 @@ const techerSchema = new mongoose.Schema({
   join_date: {
     type: String,
   },
+  token: {
+    type: String,
+  },
   c_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Class",

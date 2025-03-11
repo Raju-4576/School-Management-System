@@ -59,8 +59,12 @@ exports.teacherLogin = async (req, res) => {
       });
     }
 
-    let token = jwt.sign({ role: "teacher" }, process.env.KEY);
-
+    let token = jwt.sign(
+      { role: data.role, id: data._id, c_id: data.c_id },
+      process.env.KEY
+    );
+    data.token = token;
+    await data.save();
     res.status(200).json({
       message: "Login successful",
       user: data,
@@ -74,7 +78,9 @@ exports.teacherLogin = async (req, res) => {
 
 exports.getAllTeacher = async (req, res) => {
   try {
-    var data = await teacher.find();
+    console.log(req.user);
+
+    var data = await teacher.find().populate("c_id");
     if (data.length === 0) {
       return res.status(404).json({
         message: "no record found in databse",
@@ -110,6 +116,18 @@ exports.getSingleTeacher = async (req, res) => {
 exports.updateTeacher = async (req, res) => {
   try {
     let id = req.params.id;
+    const { error } = classjoischema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({
+        status: "Validataion Error",
+        errors: error.details.map((e) => e.message),
+      });
+    }
+    if (req.body.password) {
+      const hashedPassword = await bcrypt.hash(req.body.password, 10);
+      req.body.password = hashedPassword;
+    }
+
     let data = await teacher.findByIdAndUpdate(id, req.body, { new: true });
     if (!data) {
       return res.status(400).json({

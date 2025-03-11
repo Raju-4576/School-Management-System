@@ -1,39 +1,54 @@
 const Joi = require("joi");
+Joi.objectId = require("joi-objectid")(Joi);
 
 const marksValidationSchema = Joi.object({
-  subject1: Joi.number().min(0).max(100).required().messages({
-    "number.base": "Subject 1 must be a number.",
-    "number.min": "Subject 1 cannot be less than 0.",
-    "number.max": "Subject 1 cannot be greater than 100.",
-    "any.required": "Subject 1 is required.",
+  t_id: Joi.objectId().messages({
+    "any.required": "Teacher ID (t_id) is required.",
+    "string.pattern.base": "Invalid Teacher ID format.",
+  }),
+  s_id: Joi.objectId().messages({
+    "any.required": "Student ID (s_id) is required.",
+    "string.pattern.base": "Invalid Student ID format.",
+  }),
+  subjects: Joi.object()
+    .pattern(
+      Joi.string().min(2).max(30).messages({
+        "string.base": "Each subject name must be a string.",
+        "string.empty": "Subject name cannot be empty.",
+        "string.min": "Subject name must be at least 2 characters long.",
+        "string.max": "Subject name must not exceed 30 characters.",
+      }),
+      Joi.number().min(0).max(100).messages({
+        "number.base": "Marks must be a number.",
+        "number.min": "Marks must be at least 0.",
+        "number.max": "Marks cannot above 100.",
+      })
+    )
+    .required()
+    .messages({
+      "object.base":
+        "Subjects must be an object with subject names as keys and marks as values.",
+      "any.required": "Subjects field is required.",
+    }),
+  // result_date: Joi.string()
+  //   .pattern(/^\d{2}-\d{2}-\d{4}$/)
+  //   .required()
+  //   .messages({
+  //     "string.pattern.base": "Join date must be in the format DD-MM-YYYY.",
+  //     "string.empty": "Join date is not Empty.",
+  //     "any.required": "Join date field is required.",
+  //   }),
+
+  total: Joi.number().messages({
+    "number.base": "Total marks must be a number.",
   }),
 
-  subject2: Joi.number().min(0).max(100).required().messages({
-    "number.base": "Subject 2 must be a number.",
-    "number.min": "Subject 2 cannot be less than 0.",
-    "number.max": "Subject 2 cannot be greater than 100.",
-    "any.required": "Subject 2 is required.",
+  grade: Joi.string().valid("A+", "A", "B", "C", "F").messages({
+    "any.only": "Grade must be one of A+, A, B, C, or F.",
   }),
 
-  subject3: Joi.number().min(0).max(100).required().messages({
-    "number.base": "Subject 3 must be a number.",
-    "number.min": "Subject 3 cannot be less than 0.",
-    "number.max": "Subject 3 cannot be greater than 100.",
-    "any.required": "Subject 3 is required.",
-  }),
-
-  subject4: Joi.number().min(0).max(100).required().messages({
-    "number.base": "Subject 4 must be a number.",
-    "number.min": "Subject 4 cannot be less than 0.",
-    "number.max": "Subject 4 cannot be greater than 100.",
-    "any.required": "Subject 4 is required.",
-  }),
-
-  subject5: Joi.number().min(0).max(100).required().messages({
-    "number.base": "Subject 5 must be a number.",
-    "number.min": "Subject 5 cannot be less than 0.",
-    "number.max": "Subject 5 cannot be greater than 100.",
-    "any.required": "Subject 5 is required.",
+  percentage: Joi.number().messages({
+    "number.base": "Percentage must be a number.",
   }),
 });
 

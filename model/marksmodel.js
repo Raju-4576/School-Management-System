@@ -1,28 +1,34 @@
-var mongoose = require("mongoose");
-const marksSchema = new mongoose.Schema({
-  subject1: {
-    type: Number,
+const mongoose = require("mongoose");
+
+const marksSchema = new mongoose.Schema(
+  {
+    s_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Student",
+      unique: true,
+    },
+    t_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "teacher",
+    },
+    subjects: {
+      type: Map,
+    },
+    total: {
+      type: Number,
+      default: 0,
+    },
+    grade: {
+      type: String,
+    },
+    percentage: {
+      type: Number,
+      default: 0,
+    },
+    // result_date: {
+    //   type: String,
+    // },
   },
-  subject2: {
-    type: Number,
-  },
-  subject3: {
-    type: Number,
-  },
-  subject4: {
-    type: Number,
-  },
-  subject5: {
-    type: Number,
-  },
-  total: {
-    type: Number,
-  },
-  Grade: {
-    type: String,
-  },
-  percentage: {
-    type: Number,
-  },
-});
-module.exports = mongoose.model("Marks", marksSchema);
+  { timestamps: true }
+);
+module.exports = mongoose.model("mark", marksSchema);

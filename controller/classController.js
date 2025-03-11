@@ -3,7 +3,6 @@ const classjoischema = require("../validation/classvalidation");
 
 exports.insertClass = async (req, res) => {
   try {
-    
     const { error } = classjoischema.validate(req.body, { abortEarly: false });
     if (error) {
       return res.status(400).json({
@@ -25,21 +24,14 @@ exports.insertClass = async (req, res) => {
         message: `Class '${req.body.c_name}' already exists. Please enter another class.`,
       });
     }
-
-    if (e.name === "ValidationError") {
-      const enumErrors = Object.values(e.errors).map((err) => err.message);
-      return res.status(400).json({
-        status: "error",
-        message: "Validation Error",
-        errors: enumErrors,
-      });
-    }
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
 exports.getAllClass = async (req, res) => {
   try {
+    console.log(req.user);
+
     const data = await classes.find();
     if (!data || data.length === 0) {
       return res.status(404).json({
@@ -60,17 +52,16 @@ exports.getAllClass = async (req, res) => {
 
 exports.updateClass = async (req, res) => {
   try {
-    let { c_name } = req.body;
     let id = req.params.id;
-    let existC_name = await classes.findOne({ c_name, _id: { $ne: id } });
-    if (existC_name) {
+    const { error } = classjoischema.validate(req.body, { abortEarly: false });
+    if (error) {
       return res.status(400).json({
-        message: "Class is already exist Please Enter another class",
+        status: "Validataion Error",
+        errors: error.details.map((e) => e.message),
       });
     }
     const data = await classes.findByIdAndUpdate(id, req.body, {
       new: true,
-      runValidators: true,
     });
     if (!data) {
       return res.status(404).json({ message: "Class not found" });
@@ -83,16 +74,13 @@ exports.updateClass = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map((err) => err.message);
+    if (error.code === 11000) {
       return res.status(400).json({
-        status: "Validation Error",
-        errors,
+        status: "error",
+        message: `Class name is already exists. Please enter another class name.`,
       });
     }
-    res.status(500).json({
-      meaasge: "Internal Server Error",
-    });
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
