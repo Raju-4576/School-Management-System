@@ -4,7 +4,9 @@ const teacherController = require("../controller/teachercontroller");
 const marksController = require("../controller/marksController");
 const classController = require("../controller/classController");
 const studentController = require("../controller/studentController");
-const attedanceController=require('../controller/attedanceController')
+const attedanceController=require('../controller/attedanceController');
+const eventController=require('../controller/eventController')
+const feesController=require('../controller/feesController')
 const { isTeacher, isAdmin,isTeacherOrStudent } = require("../middleware/jwt");
 
 /* GET home page. */
@@ -41,8 +43,23 @@ router.get("/getStudent/:id", isTeacherOrStudent, studentController.getSingleStu
 router.delete("/deleteStudent/:id", isTeacher, studentController.deleteStudent);
 
 //attedance
-router.post('/insertAtt/:id',attedanceController.insertAttedance)
+router.post('/insertAtt/:id',isTeacher,attedanceController.insertAttedance)
+router.patch('/updateAtt/:id',isTeacher,attedanceController.updateAttedance)
+router.get('/getAll',isTeacher,attedanceController.getAllAttedance)
+router.delete('/deleteAtt/:id',isTeacher,attedanceController.deleteAttedance)
+router.get('/getSingleAtt/:id',isTeacherOrStudent,attedanceController.getSingleStudent)
+router.get('/dateSpecific',isTeacher,attedanceController.getAttedanceDatewise)
 
+//Events
+router.post('/insertEvent',isTeacher,eventController.insertEvent);
+router.get('/getAllEvent',isTeacherOrStudent,eventController.getAllEvent)
+router.get('/getAllEventByDate',isTeacherOrStudent,eventController.getAllEventbyDate)
+router.patch('/updateEvent/:id',isTeacher,eventController.updateEvent)
+router.delete('/deleteEvent/:id',isTeacher,eventController.deleteEvent)
+
+
+//fees
+router.post('/insertFees/:c_id/:s_id',feesController.insertFees)
 //admin
 router.post("/adminlogin", teacherController.adminLogin);
 
