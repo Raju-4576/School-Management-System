@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+let today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
 
 const marksSchema = new mongoose.Schema(
   {
@@ -25,9 +26,10 @@ const marksSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // result_date: {
-    //   type: String,
-    // },
+    result_date: {
+      type: String,
+      default: today,
+    },
   },
   { timestamps: true }
 );

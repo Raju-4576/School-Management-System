@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
-let today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
+let futureDate = new Date();
+futureDate.setMonth(futureDate.getMonth() + 2);
 
 const feesSchema = new mongoose.Schema({
   s_id: {
@@ -7,27 +8,28 @@ const feesSchema = new mongoose.Schema({
     ref: "student",
     required: [true, "Student id is required"],
   },
-  t_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "teacher",
-    required: [true, "teacher id is required"],
+  a_id: {
+    // type: mongoose.Schema.Types.ObjectId,
+    // ref: "teacher",
+    // required: [true, "teacher id is required"],
+    type:String
   },
-  c_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "class",
-    required: [true, "class id is required"],
+  total_paid_fees:{
+    type:Number
   },
-  last_fees: {
-    date: {
+  total_fees: {
+    type: Number,
+  },
+  paid_fees: {
+    paid_date: {
       type: String,
-      default: today,
     },
     amt: {
       type: Number,
     },
   },
   remain_fees: {
-    amt: {
+    remain_amt: {
       type: Number,
     },
     due_date: {

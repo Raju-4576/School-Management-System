@@ -30,14 +30,12 @@ const marksValidationSchema = Joi.object({
         "Subjects must be an object with subject names as keys and marks as values.",
       "any.required": "Subjects field is required.",
     }),
-  // result_date: Joi.string()
-  //   .pattern(/^\d{2}-\d{2}-\d{4}$/)
-  //   .required()
-  //   .messages({
-  //     "string.pattern.base": "Join date must be in the format DD-MM-YYYY.",
-  //     "string.empty": "Join date is not Empty.",
-  //     "any.required": "Join date field is required.",
-  //   }),
+  result_date: Joi.string()
+    .pattern(/^\d{2}-\d{2}-\d{4}$/)
+    .messages({
+      "string.pattern.base": "result date must be in the format DD-MM-YYYY.",
+      "string.empty": "result date is not Empty.",
+    }),
 
   total: Joi.number().messages({
     "number.base": "Total marks must be a number.",

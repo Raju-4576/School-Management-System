@@ -31,7 +31,7 @@ exports.insertTeacherData = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({
         status: "error",
-        message: `Email is already exists. Please enter another Email.`,
+        message: `Email OR Class_id is exist ,please check both.`,
       });
     }
     res.status(500).json({ message: "Internal Server Error" });
@@ -80,7 +80,8 @@ exports.getAllTeacher = async (req, res) => {
   try {
     console.log(req.user);
 
-    var data = await teacher.find().populate("c_id");
+    // var data = await teacher.find().populate("c_id");
+    var data = await teacher.find()
     if (data.length === 0) {
       return res.status(404).json({
         message: "no record found in databse",
@@ -116,7 +117,7 @@ exports.getSingleTeacher = async (req, res) => {
 exports.updateTeacher = async (req, res) => {
   try {
     let id = req.params.id;
-    const { error } = classjoischema.validate(req.body, { abortEarly: false });
+    const { error } = teacherjoischema.validate(req.body, { abortEarly: false });
     if (error) {
       return res.status(400).json({
         status: "Validataion Error",
@@ -174,7 +175,7 @@ exports.adminLogin = async (req, res) => {
     }
 
     if (username === "admin1" && password === "admin1") {
-      let token = jwt.sign({ role: "Admin" }, process.env.KEY);
+      let token = jwt.sign({ role: "Admin", id: req.body.id }, process.env.KEY);
 
       return res.status(200).json({
         message: "Admin login successful",

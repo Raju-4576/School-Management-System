@@ -88,7 +88,7 @@ exports.getAllMarks = async (req, res) => {
 exports.markUpdate = async (req, res) => {
   try {
     let t_id = req.user.id;
-    const id = req.params.mark_id;
+    const id = req.params.s_id;
     const { error } = marskjoiSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -101,8 +101,8 @@ exports.markUpdate = async (req, res) => {
     }
     let { total, percentage, grade } = calculateMarks(req.body.subjects);
 
-    const data = await marks.findByIdAndUpdate(
-      id,
+    const data = await marks.findOneAndUpdate(
+      { s_id: id },
       { ...req.body, total, percentage, grade, t_id },
       { new: true }
     );

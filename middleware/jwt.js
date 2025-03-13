@@ -16,6 +16,8 @@ const isTeacher = (req, res, next) => {
         .status(403)
         .json({ message: "Access denied. You are not an admin." });
     }
+    // console.log(token);
+
     req.user = decoded;
     next();
   } catch (error) {
@@ -71,4 +73,28 @@ const isTeacherOrStudent = (req, res, next) => {
   }
 };
 
-module.exports = { isTeacher, isAdmin, isTeacherOrStudent };
+const isTeacherOrAdmin = (req, res, next) => {
+  try {
+    const token = req.headers.authorization;
+    if (!token) {
+      return res
+        .status(403)
+        .json({ message: "Access denied. No token provided." });
+    }
+
+    const decoded = jwt.verify(token, process.env.KEY);
+
+    if (decoded.role !== "Admin" && decoded.role !== "teacher") {
+      return res
+        .status(403)
+        .json({ message: "Access denied. You are not authorized." });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid token." });
+  }
+};
+
+module.exports = { isTeacher, isAdmin, isTeacherOrStudent, isTeacherOrAdmin };

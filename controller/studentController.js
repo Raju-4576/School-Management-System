@@ -19,7 +19,7 @@ exports.insertStudent = async (req, res) => {
     const data = await student.create({
       ...req.body,
       t_id: req.user.id,
-      c_id: req.user.c_id,
+      c_id: req.params.c_id,
     });
     res.status(201).json({ message: "student created success", data });
   } catch (error) {

@@ -100,3 +100,65 @@ exports.deleteClass = async (req, res) => {
     });
   }
 };
+
+exports.findClass = async (req, res) => {
+  try {
+    let standard = req.body.c_name;
+    if(!standard){
+      return res.status(400).json({
+        message:"Please Enter class Which you want"
+      })
+    }
+    const filter = standard ? { c_name: new RegExp(`^${standard}`, "i") } : {};
+    // console.log(filter);
+    
+
+    const data = await classes.find(filter);
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        status: "error",
+         message : "No class records found in the database.",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Filtered Class Details",
+      total:data.length,
+      data,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.streamWise = async (req, res) => {
+  try {
+    let standard = req.body.stream;
+    if(!standard){
+      return res.status(400).json({
+        message:"Please Enter class Which you want"
+      })
+    }
+    // const filter = standard ? { c_name: new RegExp(`^${standard}`, "i") } : {};
+
+    const data = await classes.find({class_stream:standard});
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        status: "error",
+         message : "No class records found in the database.",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Filtered Class Details",
+      total:data.length,
+      data,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
