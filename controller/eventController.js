@@ -23,6 +23,8 @@ exports.insertEvent = async (req, res) => {
 
 exports.getAllEvent = async (req, res) => {
   try {
+ 
+
     const data = await event.find();
     if (!data || data.length === 0) {
       return res

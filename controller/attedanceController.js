@@ -1,14 +1,16 @@
 const attedance = require("../model/attendancemodel");
 const attedancejoimodel = require("../validation/attedancevalidation");
+const student = require("../model/studentmodel");
 exports.insertAttedance = async (req, res) => {
   try {
     let t_id = req.user.id;
     let s_id = req.params.id;
 
-    const studentExists = await student.findById(s_id);
+    const studentExists = await student.findOne({ _id: s_id });
     if (!studentExists) {
       return res.status(404).json({ message: "Student does not exist" });
     }
+    console.log(studentExists);
 
     const { error } = attedancejoimodel.validate(req.body, {
       abortEarly: false,
