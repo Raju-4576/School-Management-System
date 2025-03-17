@@ -4,8 +4,11 @@ exports.insertAttedance = async (req, res) => {
   try {
     let t_id = req.user.id;
     let s_id = req.params.id;
-    // let today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
-    // let attendanceDate = req.body.date ? req.body.date : today;
+
+    const studentExists = await student.findById(s_id);
+    if (!studentExists) {
+      return res.status(404).json({ message: "Student does not exist" });
+    }
 
     const { error } = attedancejoimodel.validate(req.body, {
       abortEarly: false,
