@@ -1,7 +1,6 @@
 const fees = require("../model/feesModel");
 const feesJoiSchema = require("../validation/feesvalidation");
 const student = require("../model/studentmodel");
-const mongoose = require("mongoose");
 
 exports.insertFees = async (req, res) => {
   try {
@@ -18,34 +17,23 @@ exports.insertFees = async (req, res) => {
         message: "Student Not Found",
       });
     }
-    const fetch_total = await fees.aggregate([
-      {
-        $match: {
-          s_id: new mongoose.Types.ObjectId(s_id),
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total_paid_fees: {
-            $sum: "$paid_fees.amt",
-          },
-        },
-      },
-    ]);
+    const studentFees = await fees.find({ s_id: s_id });
 
-    let previous_paid_fees =
-      fetch_total.length > 0 ? fetch_total[0].total_paid_fees : 0;
+    const previous_paid_fees = studentFees.reduce((total, fee) => {
+      return total + (fee.paid_fees?.amt || 0);
+    }, 0);
 
-    const paid_fees = req.body.amt;
-    let total_paid_fees = previous_paid_fees + paid_fees;
+    const paid_fees = Number(req.body.amt) || 0;
+    const total_paid_fees = previous_paid_fees + paid_fees;
     const total_fees = studentData.c_id.fees;
+
     if (total_paid_fees > total_fees) {
       return res.status(400).json({
         message: "Total paid fees cannot exceed total fees.",
         total_fees,
       });
     }
+
     const remain_fees = total_fees - total_paid_fees;
 
     let status = "";
@@ -55,13 +43,13 @@ exports.insertFees = async (req, res) => {
 
     const paidFeesDate = req.body?.paid_date
       ? new Date(
-        req.body.paid_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
-      )
+          req.body.paid_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
+        )
       : new Date();
     let remainFeesDueDate = req.body?.due_date
       ? new Date(
-        req.body.due_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
-      )
+          req.body.due_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
+        )
       : futureDate;
 
     if (paidFeesDate >= remainFeesDueDate) {
@@ -108,29 +96,12 @@ exports.updateFees = async (req, res) => {
     const id = req.params.id;
     const findData = await fees.findById(id);
     const total_fees = findData.total_fees;
-    const paid_fees = req.body.amt;
+    const find_paid_fees = findData.total_paid_fees;
+    const new_paid_fees = req.body.amt;
+    const old_paid_fees = findData.paid_fees.amt;
+   
 
-    const fetch_total = await fees.aggregate([
-      {
-        $match: {
-          s_id: new mongoose.Types.ObjectId(s_id),
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total_paid_fees: {
-            $sum: "$paid_fees.amt",
-          },
-        },
-      },
-    ]);
-
-    let previous_paid_fees =
-      fetch_total.length > 0 ? fetch_total[0].total_paid_fees : 0;
-
-    let total_paid_fees = previous_paid_fees + paid_fees;
-    // const total_fees = studentData.c_id.fees;
+    let total_paid_fees = find_paid_fees + new_paid_fees - old_paid_fees;
     if (total_paid_fees > total_fees) {
       return res.status(400).json({
         message: "Total paid fees cannot exceed total fees.",
@@ -140,30 +111,30 @@ exports.updateFees = async (req, res) => {
     const remain_fees = total_fees - total_paid_fees;
 
     let status = "";
-    if (paid_fees === 0) status = "pending";
+    if (total_paid_fees === 0) status = "pending";
     else if (remain_fees === 0) status = "paid";
-    else if (paid_fees > 0 && remain_fees > 0) status = "partial";
+    else if (total_paid_fees > 0 && remain_fees > 0) status = "partial";
 
     const paidFeesDate = req.body?.paid_date
       ? new Date(
-        req.body.paid_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
-      )
-      : new Date(
-        findData.paid_fees.paid_date.replace(
-          /(\d{2})-(\d{2})-(\d{4})/,
-          "$3-$2-$1"
+          req.body.paid_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
         )
-      );
+      : new Date(
+          findData.paid_fees.paid_date.replace(
+            /(\d{2})-(\d{2})-(\d{4})/,
+            "$3-$2-$1"
+          )
+        );
     let remainFeesDueDate = req.body?.due_date
       ? new Date(
-        req.body.due_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
-      )
-      : new Date(
-        findData.remain_fees.due_date.replace(
-          /(\d{2})-(\d{2})-(\d{4})/,
-          "$3-$2-$1"
+          req.body.due_date.replace(/(\d{2})-(\d{2})-(\d{4})/, "$3-$2-$1")
         )
-      );
+      : new Date(
+          findData.remain_fees.due_date.replace(
+            /(\d{2})-(\d{2})-(\d{4})/,
+            "$3-$2-$1"
+          )
+        );
 
     if (paidFeesDate >= remainFeesDueDate) {
       return res.status(400).json({
@@ -183,7 +154,7 @@ exports.updateFees = async (req, res) => {
       {
         status,
         paid_fees: {
-          amt: paid_fees,
+          amt: new_paid_fees,
           paid_date: req.body.paid_date
             ? req.body.paid_date
             : findData.paid_fees.paid_date,
@@ -194,13 +165,13 @@ exports.updateFees = async (req, res) => {
             ? req.body.due_date
             : findData.remain_fees.due_date,
         },
+        total_paid_fees,
       },
       { new: true }
     );
     res.status(200).json({
       message: "Update success",
       data,
-      findata: findData,
     });
   } catch (error) {
     console.error(error);
@@ -238,35 +209,34 @@ exports.updateStatus = async (req, res) => {
 
 exports.deleteFees = async (req, res) => {
   try {
-
-    const id = req.params.id
+    const id = req.params.id;
     const data = await fees.findByIdAndDelete(id);
-    res.status(200).json({ message: "delete success", data })
+    res.status(200).json({ message: "delete success", data });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Internal server error" })
-
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 exports.deleteFeesStudent = async (req, res) => {
   try {
     const s_id = req.params.s_id;
     const deletedRecords = await fees.find({ s_id: s_id });
-    const data = await fees.deleteMany({ s_id: s_id })
-    res.status(200).json({ message: "delete success", data, deletedRecords })
-
+    const data = await fees.deleteMany({ s_id: s_id });
+    res.status(200).json({ message: "delete success", data, deletedRecords });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Internal server error" })
+    res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 exports.showFeesStudent = async (req, res) => {
   try {
     const s_id = req.params.s_id;
 
-    const data = await fees.find({ s_id: s_id }).sort({ "paid_fees.paid_date": -1 });
+    const data = await fees
+      .find({ s_id: s_id })
+      .sort({ "paid_fees.paid_date": -1 });
 
     const lastRecord = data.length > 0 ? data[0] : null;
 
@@ -274,9 +244,8 @@ exports.showFeesStudent = async (req, res) => {
       message: "Find success",
       total_paid_fees: lastRecord ? lastRecord.total_paid_fees : 0,
       total_remain_fees: lastRecord ? lastRecord.remain_fees?.remain_amt : 0,
-      data
+      data,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
