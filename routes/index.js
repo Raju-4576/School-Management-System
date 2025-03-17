@@ -7,6 +7,7 @@ const studentController = require("../controller/studentController");
 const attedanceController=require('../controller/attedanceController');
 const eventController=require('../controller/eventController')
 const feesController=require('../controller/feesController')
+const adminController=require('../controller/adminController')
 const { isTeacher, isAdmin,isTeacherOrStudent,isTeacherOrAdmin } = require("../middleware/jwt");
 
 /* GET home page. */
@@ -69,6 +70,7 @@ router.delete('/deleteFees/:id',isAdmin,feesController.deleteFees)
 router.delete('/deleteStudentFees/:s_id',isAdmin,feesController.deleteFeesStudent)
 
 //admin
-router.post("/adminlogin", teacherController.adminLogin);
+router.post("/adminInsert", adminController.insertAdminData);
+router.post("/adminlogin", adminController.adminLogin);
 
 module.exports = router;
