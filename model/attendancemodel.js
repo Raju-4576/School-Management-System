@@ -1,18 +1,13 @@
 const mongoose = require("mongoose");
-let today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
-const attendanceSchema1 = new mongoose.Schema(
+const attendanceSchema = new mongoose.Schema(
   {
-    s_id: {
+    studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Student",
     },
-    t_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "teacher",
-    },
     date: {
-      type: String,
-      default: today,
+      type: Date,
+      default: new Date(),
     },
     status: {
       type: String,
@@ -23,8 +18,8 @@ const attendanceSchema1 = new mongoose.Schema(
       default: "---",
     },
   },
-  { timestamps: true }
+  { timestamps: true, versionKey: false }
 );
 
-attendanceSchema1.index({ s_id: 1, date: 1 }, { unique: true });
-module.exports = mongoose.model("Attendance12", attendanceSchema1);
+attendanceSchema.index({ s_id: 1, date: 1 }, { unique: true });
+module.exports = mongoose.model("Attendance", attendanceSchema);

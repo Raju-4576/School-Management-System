@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-let today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
+// const today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
 const currentTime = new Date();
 const fromTime = currentTime.toLocaleTimeString("en-US", {
   hour: "2-digit",
@@ -16,25 +16,25 @@ const toTime = currentTime.toLocaleTimeString("en-US", {
 });
 
 const eventSchema = new mongoose.Schema({
-  Event_name: {
+  eventName: {
     type: String,
   },
   date: {
-    type: String,
-    default: today,
+    type: Date,
+    default: new Date(),
   },
   time: {
     from: { type: String, required: true, default: fromTime },
     to: { type: String, required: true, default: toTime },
   },
-  Organizers: {
+  organizers: {
     type: [String],
   },
-  Event_place: {
+  eventPlace: {
     type: String,
     uppercase: true,
   },
-  t_id: {
+  teacherId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "teacher",
     required: [true, "Teacher id must be required"],

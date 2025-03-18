@@ -1,18 +1,15 @@
 const mongoose = require("mongoose");
-let futureDate = new Date();
-futureDate.setMonth(futureDate.getMonth() + 2);
 
 const feesSchema = new mongoose.Schema({
-  s_id: {
+  studentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "student",
     required: [true, "Student id is required"],
   },
-  a_id: {
-    // type: mongoose.Schema.Types.ObjectId,
-    // ref: "teacher",
-    // required: [true, "teacher id is required"],
-    type:String
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Admin",
+    required: [true, "Admin id is required"],
   },
   total_paid_fees:{
     type:Number
@@ -22,7 +19,7 @@ const feesSchema = new mongoose.Schema({
   },
   paid_fees: {
     paid_date: {
-      type: String,
+      type: Date,
     },
     amt: {
       type: Number,
@@ -33,7 +30,7 @@ const feesSchema = new mongoose.Schema({
       type: Number,
     },
     due_date: {
-      type: String,
+      type: Date,
     },
   },
   status: {

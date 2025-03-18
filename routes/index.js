@@ -8,6 +8,7 @@ const event=require('./event')
 const attedance=require('./attedance')
 const fees=require('./fees')
 const admin=require('./admin')
+const teacherOrStudent=require('./teacherorstudent')
 
 
 
@@ -19,5 +20,6 @@ router.use('/',attedance)
 router.use('/',event)
 router.use('/',fees)
 router.use('/',admin)
+router.use('/',teacherOrStudent)
 
 module.exports = router;

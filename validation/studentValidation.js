@@ -34,13 +34,13 @@ const studentValidationSchema = Joi.object({
     "any.required": "role field is required.",
   }),
 
-  DOB: Joi.string()
-    .pattern(/^\d{2}-\d{2}-\d{4}$/)
+  dob: Joi.string()
+    // .pattern(/^\d{2}-\d{2}-\d{4}$/)
     .required()
     .messages({
       "string.empty": "Date of Birth is required.",
       "any.required": "Date of Birth is required.",
-      "string.pattern.base": "Invalid DOB format. Use DD-MM-YYYY.",
+      // "string.pattern.base": "Invalid DOB format. Use DD-MM-YYYY.",
     }),
 
   gender: Joi.string().valid("Male", "Female", "Other").required().messages({

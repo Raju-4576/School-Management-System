@@ -1,14 +1,14 @@
 const mongoose = require("mongoose");
-let today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
+const today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
 
 const marksSchema = new mongoose.Schema(
   {
-    s_id: {
+    studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Student",
       unique: true,
     },
-    t_id: {
+    teacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "teacher",
     },
@@ -33,4 +33,4 @@ const marksSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-module.exports = mongoose.model("mark", marksSchema);
+module.exports = mongoose.model("Mark", marksSchema);
