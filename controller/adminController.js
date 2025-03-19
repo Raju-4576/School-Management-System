@@ -51,10 +51,9 @@ exports.adminLogin = async (req, res) => {
       return res.status(400).json({
         message: "Validation Error",
         error: error,
-        // error: error.details.map((e) => e.message),
       });
     }
-    var data = await admin.findOne({ email });
+    const data = await admin.findOne({ email });
     if (!data) {
       return res.status(404).json({
         message: "invalid Email",
@@ -67,7 +66,7 @@ exports.adminLogin = async (req, res) => {
       });
     }
 
-    let token = jwt.sign({ role: "Admin", id: data._id }, process.env.KEY);
+    const token = jwt.sign({ role: "Admin", id: data._id }, process.env.KEY);
     res.status(200).json({
       message: "Login successful",
       user: data,

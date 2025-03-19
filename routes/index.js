@@ -20,6 +20,6 @@ router.use('/',attedance)
 router.use('/',event)
 router.use('/',fees)
 router.use('/',admin)
-router.use('/',teacherOrStudent)
+router.use('/teacherOrStudent',teacherOrStudent)
 
 module.exports = router;

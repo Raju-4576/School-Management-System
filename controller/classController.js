@@ -1,14 +1,19 @@
 const classes = require("../model/classmodel");
-const classjoischema = require("../validation/classvalidation");
+const {
+  classUpdateValidationSchema,
+  classValidationSchema,
+} = require("../validation/classvalidation");
 
 exports.insertClass = async (req, res) => {
   try {
     const { className } = req.body;
-    const { error } = classjoischema.validate(req.body, { abortEarly: false });
+    const { error } = classValidationSchema.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         status: "Validataion Error",
-        errors: error.details.map((e) => e.message),
+        errors: error,
       });
     }
     const existClass = await classes.findOne({ className });
@@ -32,16 +37,16 @@ exports.insertClass = async (req, res) => {
 
 exports.getAllClass = async (req, res) => {
   try {
-    console.log(req.user);
+    const data = await classes.find().select("className fees classStream -_id");
 
-    const data = await classes.find();
     if (!data || data.length === 0) {
       return res.status(404).json({
         status: "error",
         message: "No class records found in the database.",
       });
     }
-    res.status(201).json({
+
+    res.status(200).json({
       status: "success",
       message: "All Classes Details",
       data,
@@ -54,21 +59,33 @@ exports.getAllClass = async (req, res) => {
 
 exports.updateClass = async (req, res) => {
   try {
-    let id = req.params.id;
-    const { error } = classjoischema.validate(req.body, { abortEarly: false });
+    const { id } = req.params;
+    const { className } = req.body;
+    const { error } = classUpdateValidationSchema.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         status: "Validataion Error",
-        errors: error.details.map((e) => e.message),
+        errors: error,
       });
+    }
+    const existClass = await classes.findOne({ className });
+    if (existClass) {
+      return res
+        .status(400)
+        .json({ message: "Class is exist.Enter Another Class name" });
     }
     const data = await classes.findByIdAndUpdate(id, req.body, {
       new: true,
     });
-    if (!data) {
-      return res.status(404).json({ message: "Class not found" });
-    }
 
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        status: "error",
+        message: "No class records found in the database.",
+      });
+    }
     res.status(200).json({
       status: "success",
       message: "Class updated successfully",
@@ -76,19 +93,13 @@ exports.updateClass = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    if (error.code === 11000) {
-      return res.status(400).json({
-        status: "error",
-        message: `Class name is already exists. Please enter another class name.`,
-      });
-    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 exports.deleteClass = async (req, res) => {
   try {
-    let id = req.params.id;
+    const { id } = req.params;
     const data = await classes.findByIdAndDelete(id);
     res.status(200).json({
       status: "Success",
@@ -102,19 +113,15 @@ exports.deleteClass = async (req, res) => {
     });
   }
 };
-
-exports.findClass = async (req, res) => {
+exports.streamWise = async (req, res) => {
   try {
-    let standard = req.body.c_name;
-    if (!standard) {
+    const { classStream } = req.body;
+    if (!classStream) {
       return res.status(400).json({
-        message: "Please Enter class Which you want",
+        message: "Please Enter class stream Which you want",
       });
     }
-    const filter = standard ? { c_name: new RegExp(`^${standard}`, "i") } : {};
-    // console.log(filter);
-
-    const data = await classes.find(filter);
+    const data = await classes.find({ classStream: classStream });
     if (!data || data.length === 0) {
       return res.status(404).json({
         status: "error",
@@ -133,18 +140,22 @@ exports.findClass = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-exports.streamWise = async (req, res) => {
+exports.findClass = async (req, res) => {
   try {
-    let standard = req.body.stream;
-    if (!standard) {
+    const { className, classStream } = req.body;
+    if (!className) {
       return res.status(400).json({
         message: "Please Enter class Which you want",
       });
     }
-    // const filter = standard ? { c_name: new RegExp(`^${standard}`, "i") } : {};
+    const filter = {
+      className: new RegExp(`^${className}`, "i"),
+    };
+    if (classStream) {
+      filter.classStream = classStream;
+    }
 
-    const data = await classes.find({ class_stream: standard });
+    const data = await classes.find(filter);
     if (!data || data.length === 0) {
       return res.status(404).json({
         status: "error",

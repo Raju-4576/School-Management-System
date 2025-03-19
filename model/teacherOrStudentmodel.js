@@ -24,15 +24,18 @@ const teacherStudentSchema = new mongoose.Schema(
     },
     class: {
       type: [String],
+      default: undefined,
     },
     sub: {
       type: [String],
+      default: undefined,
     },
     batch: {
       type: String,
     },
     join_date: {
       type: Date,
+      default: Date.now,
     },
     gender: {
       type: String,
@@ -49,18 +52,16 @@ const teacherStudentSchema = new mongoose.Schema(
     },
     hobby: {
       type: [String],
-      default:undefined
-    },
-    admission_date: {
-      type: Date,
+      default: undefined,
     },
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "teacher",
+      ref: "TeacherStudent",
     },
     classId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Class",
+      unique: true,
     },
   },
   {
