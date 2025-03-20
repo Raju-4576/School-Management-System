@@ -20,8 +20,7 @@ const teacherOrStudentValidation = Joi.object({
     .required(),
   address: Joi.string().max(200).required(),
   join_date: Joi.string()
-    .pattern(/^(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)
-    .required(),
+    .pattern(/^(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/),
   hobby: Joi.array().items(Joi.string().trim().min(3).max(30)).min(2),
   class: Joi.array().items(Joi.string().trim().min(2).max(10)),
   sub: Joi.array().items(Joi.string().trim().min(3).max(30)).min(2),

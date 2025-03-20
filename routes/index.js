@@ -12,10 +12,10 @@ const teacherOrStudent=require('./teacherorstudent')
 
 
 
-router.use('/teacher',teacher)
+// router.use('/teacher',teacher)
 router.use('/class',classes)
-router.use('/',student)
-router.use('/',mark)
+// router.use('/',student)
+router.use('/marks',mark)
 router.use('/',attedance)
 router.use('/',event)
 router.use('/',fees)

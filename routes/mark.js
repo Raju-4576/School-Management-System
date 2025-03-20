@@ -8,10 +8,14 @@ const {
 } = require("../middleware/jwt");
 
 
-router.post("/markInsert/:s_id",isTeacher, marksController.insertMarks);
-router.get("/getAllMarks",isTeacherOrAdmin, marksController.getAllMarks);
-router.patch("/markUpdate/:s_id",isTeacher, marksController.markUpdate);
+router.post("/markInsert/:studentId",isTeacher, marksController.insertMarks);
+router.patch("/markUpdate/:markId",isTeacher, marksController.markUpdate);
 router.get("/getSingleMarks",isTeacherOrStudent, marksController.getSingleMarks);
 router.delete("/deleteMarks/:id",isTeacher, marksController.deleteMarks);
+router.get("/top3Student",isTeacherOrAdmin, marksController.findTop3ClassWise);
+router.get("/top3AllClassStudent",isTeacherOrAdmin, marksController.findTop3AllClassWise);
+router.get("/passOrFailCount",isTeacherOrAdmin, marksController.passOrFailStudent);
+router.get("/passOrFailCountAllClass",isTeacherOrAdmin, marksController.allOverClssWisePassorFail);
+router.get("/allOver",isTeacherOrAdmin, marksController.allOverPassorFail);
 
 module.exports = router;

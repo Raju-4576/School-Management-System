@@ -212,8 +212,9 @@ exports.findAllTeacher = async (req, res) => {
   try {
     const data = await teacherOrStudent
       .find({ role: "teacher" })
-      .select("name class classId sub batch -_id")
-      .populate("classId", "className -_id");
+      .select("name class classId sub batch -_id join_date")
+      .populate("classId", "className -_id")
+      .sort({ join_date: 1 });
     if (!data) {
       return res.status(404).json({ message: "data Not found" });
     }
@@ -228,7 +229,7 @@ exports.findAllStudent = async (req, res) => {
   try {
     const data = await teacherOrStudent
       .find({ role: "student" })
-      .select("name -_id")
+      .select("name -_id join_date")
       .populate({
         path: "teacherId",
         select: "name -_id",
@@ -236,7 +237,8 @@ exports.findAllStudent = async (req, res) => {
           path: "classId",
           select: "className -_id",
         },
-      });
+      })
+      .sort({ join_date: 1 });
 
     if (!data) {
       return res.status(404).json({ message: "data Not found" });
@@ -245,6 +247,7 @@ exports.findAllStudent = async (req, res) => {
     const result = data.map((student) => ({
       studentName: student.name,
       className: student.teacherId?.classId?.className || "Not Assigned",
+      Admission_date: student.join_date,
     }));
     res.status(200).json({
       message: "All Students",
@@ -259,7 +262,7 @@ exports.findAllStudent = async (req, res) => {
 
 exports.countClassStudent = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.user;
 
     const findTeacher = await teacherOrStudent
       .findOne({ _id: id, role: "teacher" })
@@ -270,9 +273,57 @@ exports.countClassStudent = async (req, res) => {
       return res.status(404).json({ message: "Teacher not Found" });
     }
 
-    const allStudent = await teacherOrStudent
-      .find({ role: "student" })
-      .select("name -_id")
+    const allStudent = await teacherOrStudent.find({ role: "student" });
+    const filteredStudents = allStudent.filter(
+      (student) => id == student.teacherId
+    );
+
+    const studentList = filteredStudents.map((student) => ({
+      studentName: student.name,
+      studentEmail: student.email,
+    }));
+    return res.status(200).json({
+      message: "Find",
+      total: filteredStudents.length,
+      teacherName: findTeacher.name,
+      className: findTeacher.classId?.className,
+      studentList,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server Error" });
+  }
+};
+
+exports.getSingleTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await teacherOrStudent
+      .findOne({ _id: id, role: "teacher" })
+      .select("name email -_id subject batch phone")
+      .populate("classId", "className -_id");
+
+    if (!data) {
+      return res.status(404).json({ message: "Teacher Not Found" });
+    }
+    res.status(200).json({
+      message: "Your data",
+      data,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+exports.getsingleStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await teacherOrStudent
+      .findOne({ _id: id, role: "student" })
+      .select("name email -_id hobby dob phone")
       .populate({
         path: "teacherId",
         select: "name -_id",
@@ -282,20 +333,67 @@ exports.countClassStudent = async (req, res) => {
         },
       });
 
-    const filteredStudents = allStudent.filter((student) => {
-      return (
-        student.teacherId?.classId?.className === findTeacher.classId?.className
-      );
+    if (!data) {
+      return res.status(404).json({ message: "student Not Found" });
+    }
+    res.status(200).json({
+      message: "Your data",
+      data,
     });
-    const studentList = filteredStudents.map((student) => ({
-      studentName: student.name,
-    }));
-    return res.status(200).json({
-      message: "Find",
-      total: studentList.length,
-      className: findTeacher.classId?.className,
-      studentList,
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({
+      message: "Internal server error",
     });
+  }
+};
+
+exports.batchWise = async (req, res) => {
+  try {
+    const { batch } = req.body;
+    const data = await teacherOrStudent
+      .find({ batch: batch, role: "teacher" })
+      .select("name email batch class sub -_id");
+    if (!data || data.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Teacher Not Found for this batch" });
+    }
+    res.status(200).json({ message: "success", data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+exports.deleteTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await teacherOrStudent.findOneAndDelete({
+      _id: id,
+      role: "teacher",
+    });
+    if (!data) {
+      return res.status(404).json({ message: "teacher not exist" });
+    }
+    res.status(200).json({ message: "delete success", data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server Error" });
+  }
+};
+
+exports.deleteStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await teacherOrStudent.findOneAndDelete({
+      _id: id,
+      role: "student",
+    });
+    if (!data) {
+      return res.status(404).json({ message: "student not exist" });
+    }
+    res.status(200).json({ message: "delete success", data });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server Error" });

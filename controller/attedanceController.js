@@ -1,17 +1,11 @@
 const attedance = require("../model/attendancemodel");
 const attedancejoimodel = require("../validation/attedancevalidation");
-const student = require("../model/studentmodel");
+const teacherOrStudent = require("../model/teacherOrStudentmodel");
 exports.insertAttedance = async (req, res) => {
   try {
-    let t_id = req.user.id;
-    let s_id = req.params.id;
-
-    const studentExists = await student.findOne({ _id: s_id });
-    if (!studentExists) {
-      return res.status(404).json({ message: "Student does not exist" });
-    }
-    console.log(studentExists);
-
+    const { date } = req.body;
+    const { id } = req.user;
+    const { studentId } = req.params;
     const { error } = attedancejoimodel.validate(req.body, {
       abortEarly: false,
     });
@@ -19,13 +13,30 @@ exports.insertAttedance = async (req, res) => {
     if (error) {
       return res.status(400).json({
         status: "Validation Error",
-        errors: error.details.map((err) => err.message),
+        errors: error,
       });
     }
+    const studentExists = await teacherOrStudent
+      .findOne({ _id: studentId })
+      .populate({ path: "teacherId" });
+    console.log(studentExists.teacherId._id);
+
+    if (!studentExists) {
+      return res.status(404).json({ message: "Student does not exist" });
+    }
+    console.log(studentExists);
+
+    const existAttedance = await attedance.findOne({
+      _id: studentId,
+      date: date,
+    });
+    if (existAttedance) {
+      return res.status(400).json({ message: "Attedance have been taken" });
+    }
+
     let data = await attedance.create({
       ...req.body,
-      t_id: t_id,
-      s_id: s_id,
+      studentId,
     });
     res.status(201).json({
       message: "Success",
@@ -33,11 +44,11 @@ exports.insertAttedance = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({ message: "Duplicate entry: Attendance has been taken" });
-    }
+    // if (error.code === 11000) {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "Duplicate entry: Attendance has been taken" });
+    // }
     res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -1,26 +1,45 @@
 const marks = require("../model/marksmodel");
-const marskjoiSchema = require("../validation/marksValidation");
+const {
+  marksValidationSchema,
+  marksUpdateValidationSchema,
+  showResultValidation,
+  topperValidation,
+  topperAllValidation,
+} = require("../validation/marksValidation");
+const teacherOrStudent = require("../model/teacherOrStudentmodel");
+const classes = require("../model/classmodel");
 
 const calculateMarks = (subjects) => {
-  let marksArr = Object.values(subjects);
+  const marksArr = Object.values(subjects);
+  const hasFailingSubject = marksArr.some((mark) => mark < 35);
 
-  let total = marksArr.reduce((sum, mark) => sum + mark, 0);
-
-  let percentage = parseFloat((total / marksArr.length).toFixed(2));
+  const total = marksArr.reduce((sum, mark) => sum + mark, 0);
+  const percentage = parseFloat((total / marksArr.length).toFixed(2));
 
   let grade = "";
-  if (percentage >= 90) {
-    grade = "A+";
-  } else if (percentage >= 80) {
-    grade = "A";
-  } else if (percentage >= 70) {
-    grade = "B";
-  } else if (percentage >= 60) {
-    grade = "C";
-  } else if (percentage >= 50) {
-    grade = "D";
-  } else {
+
+  if (hasFailingSubject) {
     grade = "F";
+  } else {
+    switch (true) {
+      case percentage >= 90:
+        grade = "A+";
+        break;
+      case percentage >= 80:
+        grade = "A";
+        break;
+      case percentage >= 70:
+        grade = "B";
+        break;
+      case percentage >= 60:
+        grade = "C";
+        break;
+      case percentage >= 35:
+        grade = "D";
+        break;
+      default:
+        grade = "F";
+    }
   }
 
   return { total, percentage, grade };
@@ -28,68 +47,67 @@ const calculateMarks = (subjects) => {
 
 exports.insertMarks = async (req, res) => {
   try {
-    let t_id = req.user.id;
-    let s_id = req.params.s_id;
+    const { studentId } = req.params;
+    const { id } = req.user;
+    const { subjects, examNo } = req.body;
 
-    const { error } = marskjoiSchema.validate(req.body, { abortEarly: false });
+    const { error } = marksValidationSchema.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         status: "Validation Error",
-        errors: error.details.map((e) => e.message),
+        errors: error,
       });
     }
 
-    let { total, percentage, grade } = calculateMarks(req.body.subjects);
+    const existEntry = await marks.findOne({ studentId, examNo });
+    if (existEntry) {
+      return res
+        .status(400)
+        .json({ message: "Student marks already Given for this exam" });
+    }
 
-    let data = await marks.create({
-      ...req.body,
-      t_id,
-      s_id,
+    const findStudent = await teacherOrStudent.findOne({
+      _id: studentId,
+      role: "student",
+    });
+
+    if (!findStudent.teacherId.equals(id)) {
+      return res
+        .status(400)
+        .json({ message: "This student does not belong to your class" });
+    }
+
+    const { total, percentage, grade } = calculateMarks(subjects);
+
+    const data = await marks.create({
+      studentId,
+      subjects,
+      examNo,
       total,
       percentage,
       grade,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       status: "success",
       message: "Marks inserted successfully",
       data,
     });
   } catch (error) {
-    console.error(error);
-    if (error.code === 11000) {
-      return res.status(400).json({
-        message: "This student is exist enter another student record",
-      });
-    }
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error("Insert Marks Error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-exports.getAllMarks = async (req, res) => {
-  try {
-    let data = await marks
-      .find()
-      .populate("s_id", "name")
-      .populate("t_id", "-_id name");
-    if (!data) {
-      return res.status(400).json({
-        message: "Data Not Found",
-      });
-    }
-    res.status(200).json({
-      message: "Show all Marks",
-      data,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server Error" });
-  }
-};
+
 exports.markUpdate = async (req, res) => {
   try {
-    let t_id = req.user.id;
-    const id = req.params.s_id;
-    const { error } = marskjoiSchema.validate(req.body, {
+    const { markId } = req.params;
+    const { subjects } = req.body;
+    const teacherId = req.user?.id;
+
+    const { error } = marksUpdateValidationSchema.validate(req.body, {
       abortEarly: false,
     });
 
@@ -99,31 +117,62 @@ exports.markUpdate = async (req, res) => {
         errors: error.details.map((err) => err.message),
       });
     }
-    let { total, percentage, grade } = calculateMarks(req.body.subjects);
 
-    const data = await marks.findOneAndUpdate(
-      { s_id: id },
-      { ...req.body, total, percentage, grade, t_id },
-      { new: true }
-    );
-    if (!data) {
-      return res.status(400).json({ message: "can not find your data" });
+    const findStudent = await marks.findById(markId).populate({
+      path: "studentId",
+      model: "TeacherStudent",
+      populate: { path: "teacherId" },
+    });
+
+    if (!findStudent) {
+      return res.status(404).json({ message: "Marks record not found" });
     }
-    res.status(200).json({ message: "Update success", data });
+
+    const studentTeacherId = findStudent?.studentId?.teacherId?._id;
+
+    if (!studentTeacherId || !studentTeacherId.equals(teacherId)) {
+      return res.status(403).json({
+        message: "You are not authorized to update this student's marks",
+      });
+    }
+
+    let updateFields = { ...req.body };
+
+    if (subjects) {
+      const { total, percentage, grade } = calculateMarks(subjects);
+      updateFields = { ...updateFields, total, percentage, grade };
+    }
+
+    const updatedData = await marks.findByIdAndUpdate(markId, updateFields, {
+      new: true,
+      runValidators: true,
+    });
+
+    res
+      .status(200)
+      .json({ message: "Marks updated successfully", data: updatedData });
   } catch (error) {
-    console.error(error);
+    console.error("Mark Update Error:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 exports.getSingleMarks = async (req, res) => {
   try {
-    let id = req.user.id;
-    if (!id) {
+    const { id } = req.user;
+    const { examNo } = req.body;
+
+    const { error } = showResultValidation.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
       return res.status(400).json({
-        message: "Id not found",
+        status: "Validation Error",
+        errors: error,
       });
     }
-    let data = await marks.findOne({ s_id: id });
+
+    const data = await marks.findOne({ studentId: id, examNo: examNo }).select("subjects total grade percentage -_id");
     if (!data) {
       return res.status(400).json({
         message: "Data not found",
@@ -141,10 +190,8 @@ exports.getSingleMarks = async (req, res) => {
 
 exports.deleteMarks = async (req, res) => {
   try {
-    let id = req.params.id;
-    console.log(id);
-
-    let data = await marks.findOneAndDelete({ s_id: id });
+    const { id } = req.params;
+    const data = await marks.findByIdAndDelete(id);
     res.status(200).json({
       message: "Data Deleted Success",
       data,
@@ -152,5 +199,302 @@ exports.deleteMarks = async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.findTop3ClassWise = async (req, res) => {
+  try {
+    const { className, examNo } = req.body;
+    const { error } = topperValidation.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "Validation Error",
+        errors: error,
+      });
+    }
+    const existClass = await classes.findOne({ className });
+
+    if (!existClass) {
+      return res.status(400).json({ message: "Class not found" });
+    }
+
+    const teacher = await teacherOrStudent.findOne({
+      classId: existClass._id,
+    });
+
+    if (!teacher) {
+      return res
+        .status(400)
+        .json({ message: "No teacher found for this class" });
+    }
+
+    const students = await teacherOrStudent.find({
+      teacherId: teacher._id,
+      role: "student",
+    });
+
+    if (students.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No students found in this class" });
+    }
+
+    const studentIds = students.map((student) => student._id);
+
+    const studentMarks = await marks
+      .find({ studentId: { $in: studentIds }, examNo })
+      .sort({ percentage: -1 })
+      .limit(3)
+      .populate({
+        path: "studentId",
+        select: "name -_id",
+        model: "TeacherStudent",
+      });
+
+    if (studentMarks.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No marks data found for this class" });
+    }
+    const result = studentMarks.map((mark) => ({
+      studentName: mark.studentId?.name || "Unknown",
+      percentage: mark.percentage,
+    }));
+    return res.status(200).json({
+      message: `Top 3 students of class ${className}`,
+      topStudents: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.findTop3AllClassWise = async (req, res) => {
+  try {
+    const { className, examNo } = req.body;
+    const { error } = topperAllValidation.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "Validation Error",
+        errors: error,
+      });
+    }
+    const classList = await classes.find({
+      className: { $regex: `^${className}`, $options: "i" },
+    });
+
+    if (classList.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No classes Found for this number" });
+    }
+    const allClassIds = classList.map((c) => c._id);
+    const findTeacher = await teacherOrStudent.find({
+      classId: { $in: allClassIds },
+    });
+
+    const allTeacherIds = findTeacher.map((t) => t._id);
+
+    const findStudent = await teacherOrStudent.find({
+      teacherId: { $in: allTeacherIds },
+    });
+
+    const allStudentIds = findStudent.map((s) => s._id);
+
+    const marksData = await marks
+      .find({ studentId: { $in: allStudentIds }, examNo })
+      .populate({
+        path: "studentId",
+        model: "TeacherStudent",
+        select: "name -_id",
+        populate: {
+          path: "teacherId",
+          select: "name -_id",
+          populate: {
+            path: "classId",
+            select: "className -_id",
+          },
+        },
+      })
+      .sort({ percentage: -1 })
+      .limit(3);
+
+    const result = marksData.map((mark) => ({
+      studentName: mark?.studentId?.name || "Unknown",
+      percentage: mark?.percentage,
+      teacherName: mark?.studentId?.teacherId?.name || "Unknown",
+      className: mark?.studentId?.teacherId?.classId?.className,
+    }));
+    res.status(200).json({
+      message: "Top 3 student of 12 classes",
+      result: result,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.passOrFailStudent = async (req, res) => {
+  try {
+    const { className, examNo } = req.body;
+    const { error } = topperValidation.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "Validation Error",
+        errors: error,
+      });
+    }
+    const existClass = await classes.findOne({ className });
+
+    if (!existClass) {
+      return res.status(400).json({ message: "Class not found" });
+    }
+
+    const teacher = await teacherOrStudent.findOne({
+      classId: existClass._id,
+    });
+
+    if (!teacher) {
+      return res
+        .status(400)
+        .json({ message: "No teacher found for this class" });
+    }
+
+    const students = await teacherOrStudent.find({
+      teacherId: teacher._id,
+    });
+    const studentIds = students.map((student) => student._id);
+
+    const studentMarks = await marks
+      .find({ studentId: { $in: studentIds }, examNo })
+      .select("-_id percentage grade")
+      .populate({
+        path: "studentId",
+        model: "TeacherStudent",
+        select: "name -_id",
+        populate: { path: "teacherId", select: "name -_id" },
+      });
+
+    if (studentMarks.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No marks data found for this class" });
+    }
+
+    const passedStudent = studentMarks.filter(
+      (student) => student.grade !== "F"
+    );
+    const failStudent = studentMarks.filter((student) => student.grade === "F");
+
+    res.status(200).json({
+      message: "Success",
+      total_pass_student: passedStudent.length,
+      passedStudent: passedStudent,
+      total_fail_student: failStudent.length,
+      failStudent: failStudent,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+exports.allOverClssWisePassorFail = async (req, res) => {
+  try {
+    const { className, examNo } = req.body;
+    const { error } = topperAllValidation.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "Validation Error",
+        errors: error,
+      });
+    }
+    const classList = await classes.find({
+      className: { $regex: `^${className}`, $options: "i" },
+    });
+
+    if (classList.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No classes Found for this number" });
+    }
+    const allClassIds = classList.map((c) => c._id);
+    const findTeacher = await teacherOrStudent.find({
+      classId: { $in: allClassIds },
+    });
+
+    const allTeacherIds = findTeacher.map((t) => t._id);
+
+    const findStudent = await teacherOrStudent.find({
+      teacherId: { $in: allTeacherIds },
+    });
+
+    const allStudentIds = findStudent.map((s) => s._id);
+
+    const studentMarks = await marks
+      .find({ studentId: { $in: allStudentIds }, examNo })
+      .select("-_id percentage grade")
+      .populate({
+        path: "studentId",
+        model: "TeacherStudent",
+        select: "name -_id",
+        populate: { path: "teacherId", select: "name -_id" },
+      });
+
+    if (studentMarks.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No marks data found for this class" });
+    }
+
+    const passedStudent = studentMarks.filter(
+      (student) => student.grade !== "F"
+    );
+    const failStudent = studentMarks.filter((student) => student.grade === "F");
+
+    res.status(200).json({
+      message: "Success",
+      total_pass_student: passedStudent.length,
+      passedStudent: passedStudent,
+      total_fail_student: failStudent.length,
+      failStudent: failStudent,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+exports.allOverPassorFail = async (req, res) => {
+  try {
+    const { examNo } = req.body;
+    const allStudent = await marks
+      .find({ examNo })
+      .select("-_id percentage grade")
+      .populate({
+        path: "studentId",
+        model: "TeacherStudent",
+        select: "name -_id",
+      });
+    const passedStudent = allStudent.filter((student) => student.grade !== "F");
+    const failStudent = allStudent.filter((student) => student.grade === "F");
+
+    res.status(200).json({
+      message: "Success",
+      total_pass_student: passedStudent.length,
+      passedStudent: passedStudent,
+      total_fail_student: failStudent.length,
+      failStudent: failStudent,
+    });
+  } catch (error) {
+    console.error(error);
   }
 };

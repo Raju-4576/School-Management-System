@@ -4,7 +4,7 @@ const teacherOrStudentController = require("../controller/teacherorstudentContro
 const {
   isAdmin,
   isTeacherOrStudent,
-  isTeacher
+  isTeacher,
 } = require("../middleware/jwt");
 
 
@@ -17,6 +17,11 @@ router.patch('/updateTeacherOrStudent/:id',isTeacherOrStudent,teacherOrStudentCo
 router.patch('/updateTeacherforStudent/:id',isAdmin,teacherOrStudentController.updateTeacherofStudent);
 router.get('/showAllTeacher',isAdmin,teacherOrStudentController.findAllTeacher);
 router.get('/showAllStudent',isAdmin,teacherOrStudentController.findAllStudent);
-router.get('/countClassStudent/:id',isTeacher,teacherOrStudentController.countClassStudent);
+router.get('/countClassStudent',isTeacher,teacherOrStudentController.countClassStudent);
+router.get('/getSingleTeacher/:id',isAdmin,teacherOrStudentController.getSingleTeacher);
+router.get('/getSingleStudent/:id',isAdmin,teacherOrStudentController.getsingleStudent);
+router.get('/batchWise',isAdmin,teacherOrStudentController.batchWise);
+router.delete('/deleteTeacher/:id',isAdmin,teacherOrStudentController.deleteTeacher);
+router.delete('/deleteStudent/:id',isAdmin,teacherOrStudentController.deleteStudent);
 
 module.exports = router;
