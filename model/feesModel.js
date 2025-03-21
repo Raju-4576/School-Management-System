@@ -12,10 +12,13 @@ const feesSchema = new mongoose.Schema({
     required: [true, "Admin id is required"],
   },
   total_paid_fees:{
-    type:Number
+    type:Number,
+    default:0
   },
   total_fees: {
     type: Number,
+    default:0
+
   },
   paid_fees: {
     paid_date: {
@@ -23,6 +26,7 @@ const feesSchema = new mongoose.Schema({
     },
     amt: {
       type: Number,
+      required:[true,"Amount is required"]
     },
   },
   remain_fees: {
@@ -35,6 +39,7 @@ const feesSchema = new mongoose.Schema({
   },
   status: {
     type: String,
+    enum:["PAID", "PENDING", "PARTIAL", "OVERDUE"],
     uppercase: true,
   },
 });

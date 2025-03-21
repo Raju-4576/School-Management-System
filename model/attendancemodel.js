@@ -8,7 +8,7 @@ const attendanceSchema = new mongoose.Schema(
     },
     date: {
       type: Date,
-      default: Date.now,
+      required: [true, "Date is required"],
     },
     status: {
       type: String,
@@ -23,6 +23,5 @@ const attendanceSchema = new mongoose.Schema(
   },
   { timestamps: true, versionKey: false }
 );
-
 attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
 module.exports = mongoose.model("Attendance", attendanceSchema);
