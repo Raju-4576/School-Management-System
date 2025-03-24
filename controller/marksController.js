@@ -37,8 +37,7 @@ const calculateMarks = (subjects) => {
       case percentage >= 35:
         grade = "D";
         break;
-      default:
-        grade = "F";
+
     }
   }
 
@@ -70,7 +69,6 @@ exports.insertMarks = async (req, res) => {
 
     const findStudent = await teacherOrStudent.findOne({
       _id: studentId,
-      role: "student",
     });
 
     if (!findStudent.teacherId.equals(id)) {
@@ -136,7 +134,7 @@ exports.markUpdate = async (req, res) => {
       });
     }
 
-    let updateFields = { ...req.body };
+    const updateFields = { ...req.body };
 
     if (subjects) {
       const { total, percentage, grade } = calculateMarks(subjects);
@@ -232,7 +230,6 @@ exports.findTop3ClassWise = async (req, res) => {
 
     const students = await teacherOrStudent.find({
       teacherId: teacher._id,
-      role: "student",
     });
 
     if (students.length === 0) {
@@ -259,8 +256,8 @@ exports.findTop3ClassWise = async (req, res) => {
         .json({ message: "No marks data found for this class" });
     }
     const result = studentMarks.map((mark) => ({
-      studentName: mark.studentId?.name || "Unknown",
-      percentage: mark.percentage,
+      studentName: mark?.studentId?.name || "Unknown",
+      percentage: mark?.percentage,
     }));
     return res.status(200).json({
       message: `Top 3 students of class ${className}`,
@@ -331,7 +328,7 @@ exports.findTop3AllClassWise = async (req, res) => {
       className: mark?.studentId?.teacherId?.classId?.className,
     }));
     res.status(200).json({
-      message: "Top 3 student of 12 classes",
+      message: `Top 3 student of ${className} classes`,
       result: result,
     });
   } catch (error) {

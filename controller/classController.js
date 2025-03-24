@@ -121,7 +121,7 @@ exports.streamWise = async (req, res) => {
         message: "Please Enter class stream Which you want",
       });
     }
-    const data = await classes.find({ classStream: classStream });
+    const data = await classes.find({ classStream: classStream }).select("-_id className fees stream");
     if (!data || data.length === 0) {
       return res.status(404).json({
         status: "error",

@@ -21,7 +21,6 @@ router.get('/countClassStudent',isTeacher,teacherOrStudentController.countClassS
 router.get('/getSingleTeacher/:id',isAdmin,teacherOrStudentController.getSingleTeacher);
 router.get('/getSingleStudent/:id',isAdmin,teacherOrStudentController.getsingleStudent);
 router.get('/batchWise',isAdmin,teacherOrStudentController.batchWise);
-router.delete('/deleteTeacher/:id',isAdmin,teacherOrStudentController.deleteTeacher);
-router.delete('/deleteStudent/:id',isAdmin,teacherOrStudentController.deleteStudent);
+router.delete('/deleteTeacherOrStudent/:id',isAdmin,teacherOrStudentController.deleteTeacherOrStudent);
 
 module.exports = router;

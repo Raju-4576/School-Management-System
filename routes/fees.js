@@ -3,7 +3,9 @@ var router = express.Router();
 const feesController = require("../controller/feesController");
 const {
   isAdmin,
-  isTeacherOrStudent
+  isTeacherOrStudent,
+  isTeacher,
+  isTeacherOrAdmin
 } = require("../middleware/jwt");
 
 
@@ -13,5 +15,10 @@ router.patch('/updateFees/:id',isAdmin,feesController.updateFees)
 router.patch('/updateStatus',isAdmin,feesController.updateStatus)
 router.get('/findStudentRecord/:studentId',isTeacherOrStudent,feesController.showFeesStudent)
 router.delete('/deleteFees/:id',isAdmin,feesController.deleteFees)
+router.get('/remainingFeesStudent',isAdmin,feesController.findRemainingFees)
+router.get('/classWiseremainingFeesStudent',isTeacherOrAdmin,feesController.classWisefindRemainingFees)
+router.get('/statusWise',isAdmin,feesController.statusWise)
+router.get('/classWiseStatus',isAdmin,feesController.filterByClassAndStatus)
+
 
 module.exports = router;

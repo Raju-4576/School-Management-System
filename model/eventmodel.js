@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-// const today = new Date().toLocaleDateString("en-GB").replaceAll("/", "-");
 const currentTime = new Date();
 const fromTime = currentTime.toLocaleTimeString("en-US", {
   hour: "2-digit",
@@ -18,27 +17,33 @@ const toTime = currentTime.toLocaleTimeString("en-US", {
 const eventSchema = new mongoose.Schema({
   eventName: {
     type: String,
+    required: [true, "Event name Must be required"]
   },
-  date: {
+  eventDate: {
     type: Date,
-    default: new Date(),
+    default: Date.now,
   },
-  time: {
+  eventTime: {
     from: { type: String, required: true, default: fromTime },
     to: { type: String, required: true, default: toTime },
   },
   organizers: {
     type: [String],
+    required: [true, "organizers must be required"]
   },
   eventPlace: {
     type: String,
     uppercase: true,
+    required: [true, "Event Place must be required"]
   },
-  teacherId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "teacher",
-    required: [true, "Teacher id must be required"],
+  className: {
+    type: [String],
+    required: [true, "Class Name must be required"]
+
   },
+}, {
+  timestamps: true,
+  versionKey: false
 });
 
 module.exports = mongoose.model("Event", eventSchema);

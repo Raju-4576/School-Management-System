@@ -102,7 +102,7 @@ exports.updateAdmin = async (req, res) => {
       }
     }
 
-    let updateData = { ...req.body };
+    const updateData = { ...req.body };
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }

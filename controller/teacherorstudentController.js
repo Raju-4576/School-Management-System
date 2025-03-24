@@ -34,7 +34,7 @@ exports.insertTeacherOrStudent = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    let basicData = {
+    const basicData = {
       ...req.body,
       classId,
       password: hashedPassword,
@@ -140,7 +140,7 @@ exports.updateTeacherOrStudent = async (req, res) => {
       }
     }
 
-    let updateData = { ...req.body };
+    const updateData = { ...req.body };
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }
@@ -164,6 +164,7 @@ exports.updateTeacherOrStudent = async (req, res) => {
   }
 };
 
+//student going next class
 exports.updateTeacherofStudent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -265,41 +266,38 @@ exports.countClassStudent = async (req, res) => {
     const { id } = req.user;
 
     const findTeacher = await teacherOrStudent
-      .findOne({ _id: id, role: "teacher" })
+      .findById(id)
       .select("name classId -_id")
-      .populate("classId", "className -_id");
+      .populate("classId", "className");
 
     if (!findTeacher) {
-      return res.status(404).json({ message: "Teacher not Found" });
+      return res.status(404).json({ message: "Teacher not found" });
     }
 
-    const allStudent = await teacherOrStudent.find({ role: "student" });
-    const filteredStudents = allStudent.filter(
-      (student) => id == student.teacherId
-    );
+    const studentList = await teacherOrStudent
+      .find({ teacherId: id })
+      .select("name email -_id");
 
-    const studentList = filteredStudents.map((student) => ({
-      studentName: student.name,
-      studentEmail: student.email,
-    }));
-    return res.status(200).json({
-      message: "Find",
-      total: filteredStudents.length,
+    res.status(200).json({
+      message: "Students retrieved successfully",
+      total: studentList.length,
       teacherName: findTeacher.name,
-      className: findTeacher.classId?.className,
+      className: findTeacher.classId?.className || "No Class Assigned",
       studentList,
     });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server Error" });
+    console.error("Error fetching students:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 exports.getSingleTeacher = async (req, res) => {
   try {
     const { id } = req.params;
     const data = await teacherOrStudent
-      .findOne({ _id: id, role: "teacher" })
+      .findById({ _id: id })
       .select("name email -_id subject batch phone")
       .populate("classId", "className -_id");
 
@@ -322,7 +320,7 @@ exports.getsingleStudent = async (req, res) => {
   try {
     const { id } = req.params;
     const data = await teacherOrStudent
-      .findOne({ _id: id, role: "student" })
+      .findById({ _id: id })
       .select("name email -_id hobby dob phone")
       .populate({
         path: "teacherId",
@@ -352,7 +350,7 @@ exports.batchWise = async (req, res) => {
   try {
     const { batch } = req.body;
     const data = await teacherOrStudent
-      .find({ batch: batch, role: "teacher" })
+      .find({ batch: batch })
       .select("name email batch class sub -_id");
     if (!data || data.length === 0) {
       return res
@@ -366,15 +364,14 @@ exports.batchWise = async (req, res) => {
   }
 };
 
-exports.deleteTeacher = async (req, res) => {
+exports.deleteTeacherOrStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    const data = await teacherOrStudent.findOneAndDelete({
+    const data = await teacherOrStudent.findByIdAndDelete({
       _id: id,
-      role: "teacher",
     });
     if (!data) {
-      return res.status(404).json({ message: "teacher not exist" });
+      return res.status(404).json({ message: "teacher or student not exist" });
     }
     res.status(200).json({ message: "delete success", data });
   } catch (error) {
@@ -383,19 +380,3 @@ exports.deleteTeacher = async (req, res) => {
   }
 };
 
-exports.deleteStudent = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const data = await teacherOrStudent.findOneAndDelete({
-      _id: id,
-      role: "student",
-    });
-    if (!data) {
-      return res.status(404).json({ message: "student not exist" });
-    }
-    res.status(200).json({ message: "delete success", data });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server Error" });
-  }
-};

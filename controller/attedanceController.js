@@ -8,7 +8,7 @@ const {
 const teacherOrStudent = require("../model/teacherOrStudentmodel");
 exports.insertAttendance = async (req, res) => {
   try {
-    let { date } = req.body;
+    const { date } = req.body;
     const { id } = req.user;
     const { studentId } = req.params;
 
@@ -61,7 +61,7 @@ exports.insertAttendance = async (req, res) => {
 exports.updateAttedance = async (req, res) => {
   try {
     const { id } = req.params;
-    const teacherId = req.user.id;
+    const teacherId = req?.user?.id;
     const { error } = updateAttedanceValidation.validate(req.body, {
       abortEarly: false,
     });
@@ -81,7 +81,7 @@ exports.updateAttedance = async (req, res) => {
     }
     const findTeacherId = findStudent?.studentId?.teacherId;
 
-    if (findTeacherId.equals(teacherId)) {
+    if (!findTeacherId.equals(teacherId)) {
       return res
         .status(400)
         .json({ message: "This is not your Class student" });

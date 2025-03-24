@@ -5,7 +5,7 @@ const isTeacher = (req, res, next) => {
   if (!token) {
     return res
       .status(403)
-      .json({ status: "Access denied. You Are Not Teacher " });
+      .json({ status: "Access denied. No token provided." });
   }
   // console.log(process.env.KEY);
 
@@ -14,7 +14,7 @@ const isTeacher = (req, res, next) => {
     if (decoded.role !== "teacher") {
       return res
         .status(403)
-        .json({ message: "Access denied. You are not an admin." });
+        .json({ message: "Access denied. You are not a Teacher." });
     }
     // console.log(token);
 

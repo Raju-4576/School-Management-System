@@ -31,4 +31,23 @@ const updateFeesSchema = Joi.object({
   ),
 });
 
-module.exports = { feesJoiSchema, updateFeesSchema };
+const statusValidation = Joi.object({
+
+  status: Joi.string()
+    .valid("paid", "pending", "partial", "overdue")
+    .lowercase()
+    .required()
+
+});
+
+
+const statusAndClassValidation = Joi.object({
+  className: Joi.string()
+    .required()
+    .pattern(/^(?:[1-9]|1[0-2])[A-Z]$/).required(),
+  status: Joi.string()
+    .valid("paid", "pending", "partial", "overdue")
+    .lowercase()
+    .required()
+})
+module.exports = { feesJoiSchema, updateFeesSchema, statusValidation,statusAndClassValidation };
