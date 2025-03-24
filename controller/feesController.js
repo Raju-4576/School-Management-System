@@ -3,7 +3,7 @@ const {
   updateFeesSchema,
   feesJoiSchema,
   statusValidation,
-  statusAndClassValidation
+  statusAndClassValidation,
 } = require("../validation/feesvalidation");
 const teacherOrStudent = require("../model/teacherOrStudentmodel");
 
@@ -28,7 +28,7 @@ exports.insertFees = async (req, res) => {
       populate: { path: "classId" },
     });
 
-    const total_fees = studentData?.teacherId?.classId?.fees || 0;
+    const total_fees = studentData?.teacherId?.classId?.fees;
 
     const studentFees = await fees.find({ studentId: studentId });
 
@@ -202,8 +202,6 @@ exports.deleteFees = async (req, res) => {
   }
 };
 
-
-
 exports.showFeesStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -221,7 +219,6 @@ exports.showFeesStudent = async (req, res) => {
       Installment: data.map((item) => ({
         Amount: item.paid_fees.amt,
         paid_date: item.paid_fees.paid_date,
-
       })),
     });
   } catch (error) {
@@ -238,11 +235,20 @@ exports.findRemainingFees = async (req, res) => {
       return res.status(400).json({ message: "Not found Any student" });
     }
 
-    const paidStudentIds = [...new Set(paid_fees_students.map((student) => student.studentId.toString()))];
+    const paidStudentIds = [
+      ...new Set(
+        paid_fees_students.map((student) => student.studentId.toString())
+      ),
+    ];
 
     const unpaidStudents = await teacherOrStudent
       .find({ _id: { $nin: paidStudentIds } })
-      .select("name -_id").populate({ path: "teacherId", select: "-_id name", populate: { path: "classId", select: "className -_id" } });
+      .select("name -_id")
+      .populate({
+        path: "teacherId",
+        select: "-_id name",
+        populate: { path: "classId", select: "className -_id" },
+      });
 
     res.status(200).json({ message: "success", unpaidStudents });
   } catch (error) {
@@ -253,7 +259,6 @@ exports.findRemainingFees = async (req, res) => {
 
 exports.classWisefindRemainingFees = async (req, res) => {
   try {
-
     const { id } = req.user;
     const paid_fees_students = await fees.find().select("studentId -_id");
 
@@ -261,17 +266,28 @@ exports.classWisefindRemainingFees = async (req, res) => {
       return res.status(400).json({ message: "Not found Any student" });
     }
 
-    const paidStudentIds = [...new Set(paid_fees_students.map((student) => student.studentId.toString()))];
+    const paidStudentIds = [
+      ...new Set(
+        paid_fees_students.map((student) => student.studentId.toString())
+      ),
+    ];
 
     const unpaidStudents = await teacherOrStudent
       .find({ teacherId: id, _id: { $nin: paidStudentIds } })
-      .select("name -_id").populate({ path: "teacherId", select: "-_id name", populate: { path: "classId", select: "className -_id" } });
+      .select("name -_id")
+      .populate({
+        path: "teacherId",
+        select: "-_id name",
+        populate: { path: "classId", select: "className -_id" },
+      });
 
     res.status(200).json({
-      message: "success", totalStudent: unpaidStudents.length, className: unpaidStudents[0]?.teacherId?.classId?.className, INFO: unpaidStudents.map((item) => ({
+      message: "success",
+      totalStudent: unpaidStudents.length,
+      className: unpaidStudents[0]?.teacherId?.classId?.className,
+      INFO: unpaidStudents.map((item) => ({
         studentName: item?.name,
-
-      }))
+      })),
     });
   } catch (error) {
     console.error(error);
@@ -282,11 +298,13 @@ exports.statusWise = async (req, res) => {
   try {
     const { status } = req.body;
 
-    const { error } = statusValidation.validate(req.body, { abortEarly: false });
+    const { error } = statusValidation.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         message: "Validation Error",
-        errors: error
+        errors: error,
       });
     }
 
@@ -302,9 +320,9 @@ exports.statusWise = async (req, res) => {
           select: "name -_id",
           populate: {
             path: "classId",
-            select: "className -_id"
-          }
-        }
+            select: "className -_id",
+          },
+        },
       });
 
     if (!data || data.length === 0) {
@@ -312,14 +330,15 @@ exports.statusWise = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Success", student: data.map((student) => ({
+      message: "Success",
+      student: data.map((student) => ({
         status: status,
-        studentName: student.studentId.name,
+        studentName: student?.studentId?.name,
         remainFees: student?.remain_fees?.remain_amt,
-        total_paid_fees: student.total_paid_fees,
+        total_paid_fees: student?.total_paid_fees,
         className: student?.studentId?.teacherId?.classId?.className,
-        teacherName: student?.studentId?.teacherId?.name
-      }))
+        teacherName: student?.studentId?.teacherId?.name,
+      })),
     });
   } catch (error) {
     console.error("Error in statusWise:", error);
@@ -331,37 +350,40 @@ exports.filterByClassAndStatus = async (req, res) => {
   try {
     const { className, status } = req.body;
 
-    const { error } = statusAndClassValidation.validate(req.body, { abortEarly: false });
+    const { error } = statusAndClassValidation.validate(req.body, {
+      abortEarly: false,
+    });
     if (error) {
       return res.status(400).json({
         message: "Validation Error",
-        errors: error
+        errors: error,
       });
     }
 
-    const students = await fees
-      .find({ status })
-      .populate({
-        path: "studentId",
+    const students = await fees.find({ status }).populate({
+      path: "studentId",
+      select: "name -_id",
+      model: "TeacherStudent",
+      populate: {
+        path: "teacherId",
         select: "name -_id",
         model: "TeacherStudent",
         populate: {
-          path: "teacherId",
-          select: "name -_id",
-          model: "TeacherStudent",
-          populate: {
-            path: "classId",
-            select: "className -_id",
-          }
-        }
-      });
+          path: "classId",
+          select: "className -_id",
+        },
+      },
+    });
 
     const filteredStudents = students.filter(
-      (student) => student?.studentId?.teacherId?.classId?.className === className
+      (student) =>
+        student?.studentId?.teacherId?.classId?.className === className
     );
 
     if (filteredStudents.length === 0) {
-      return res.status(404).json({ message: "No students found for the given criteria" });
+      return res
+        .status(404)
+        .json({ message: "No students found for the given criteria" });
     }
 
     res.status(200).json({
@@ -372,9 +394,8 @@ exports.filterByClassAndStatus = async (req, res) => {
         remainFees: student?.remain_fees?.remain_amt,
         totalPaidFees: student.total_paid_fees,
         teacherName: student?.studentId?.teacherId?.name,
-      }))
+      })),
     });
-
   } catch (error) {
     console.error("Error in filterByClassAndStatus:", error);
     res.status(500).json({ message: "Internal server error" });

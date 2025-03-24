@@ -8,6 +8,8 @@ const {
 const teacherOrStudent = require("../model/teacherOrStudentmodel");
 exports.insertAttendance = async (req, res) => {
   try {
+    console.log(req.user);
+
     const { date } = req.body;
     const { id } = req.user;
     const { studentId } = req.params;
@@ -26,7 +28,7 @@ exports.insertAttendance = async (req, res) => {
       return res.status(404).json({ message: "Student does not exist" });
     }
 
-    if (!studentExists.teacherId.equals(id)) {
+    if (!studentExists?.teacherId.equals(id)) {
       return res
         .status(400)
         .json({ message: "This is not your class student" });
@@ -34,10 +36,10 @@ exports.insertAttendance = async (req, res) => {
 
     const finalDate = date ? new Date(date) : new Date();
     const startOfDay = new Date(finalDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
+    startOfDay.setHours(0, 0, 0, 0);
 
     const endOfDay = new Date(finalDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    endOfDay.setHours(23, 59, 59, 999);
 
     const existAttendance = await attedance.findOne({
       studentId,
@@ -49,7 +51,11 @@ exports.insertAttendance = async (req, res) => {
       });
     }
 
-    const data = await attedance.create({ ...req.body, studentId, date });
+    const data = await attedance.create({
+      ...req.body,
+      studentId,
+      date: finalDate,
+    });
 
     return res.status(201).json({ message: "Success", data });
   } catch (error) {
@@ -61,7 +67,7 @@ exports.insertAttendance = async (req, res) => {
 exports.updateAttedance = async (req, res) => {
   try {
     const { id } = req.params;
-    const teacherId = req?.user?.id;
+    const teacherId = req.user.id;
     const { error } = updateAttedanceValidation.validate(req.body, {
       abortEarly: false,
     });
@@ -195,8 +201,8 @@ exports.showOwnStudentAttedance = async (req, res) => {
 
     const today = date ? new Date(date) : new Date();
 
-    const startOfDay = new Date(today.setUTCHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setUTCHours(23, 59, 59, 999));
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
     const data = await attedance
       .find({
@@ -256,8 +262,8 @@ exports.allOverAbsentPresent = async (req, res) => {
     const { date } = req.body;
     const today = date ? new Date(date) : new Date();
 
-    const startOfDay = new Date(today.setUTCHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setUTCHours(23, 59, 59, 999));
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
     const data = await attedance
       .find({ date: { $gte: startOfDay, $lt: endOfDay } })
@@ -341,8 +347,8 @@ exports.fullAttendClassWise = async (req, res) => {
         model: "TeacherStudent",
       });
 
-    const filteredStudents = attendanceRecords.filter(
-      (record) => record?.studentId.teacherId?.toString() === id
+    const filteredStudents = attendanceRecords.filter((record) =>
+      record?.studentId?.teacherId.equals(id)
     );
 
     if (!filteredStudents.length) {
