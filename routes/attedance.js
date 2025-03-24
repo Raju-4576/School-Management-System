@@ -9,11 +9,11 @@ const {
 } = require("../middleware/jwt");
 
 
-router.post('/insertAtt/:studentId',isTeacher,attedanceController.insertAttendance)
-router.patch('/updateAtt/:id',isTeacher,attedanceController.updateAttedance)
+router.post('/insertAttedance/:studentId',isTeacher,attedanceController.insertAttendance)
+router.patch('/updateAttedance/:id',isTeacher,attedanceController.updateAttedance)
 router.get('/getAll',isTeacher,attedanceController.showOwnStudentAttedance)
-router.delete('/deleteAtt/:id',isTeacher,attedanceController.deleteAttedance)
-router.get('/getSingleAtt/:studentId',isTeacherOrStudent,attedanceController.getSingleStudent)
+router.delete('/deleteAttedance/:id',isTeacher,attedanceController.deleteAttedance)
+router.get('/getSingleAttedance/:studentId',isTeacherOrStudent,attedanceController.showStudentAttedanceRecordByMonth)
 router.get('/allOverAbsentPresnt',isAdmin,attedanceController.allOverAbsentPresent)
 router.get('/mostAttendStudent',isAdmin,attedanceController.fullAttend)
 router.get('/mostAttendStudentclassWise',isTeacher,attedanceController.fullAttendClassWise)

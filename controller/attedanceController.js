@@ -6,14 +6,9 @@ const {
   statusValidation,
 } = require("../validation/attedancevalidation");
 const teacherOrStudent = require("../model/teacherOrStudentmodel");
+const { default: mongoose } = require("mongoose");
 exports.insertAttendance = async (req, res) => {
   try {
-    console.log(req.user);
-
-    const { date } = req.body;
-    const { id } = req.user;
-    const { studentId } = req.params;
-
     const { error } = attendanceValidationSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -22,35 +17,39 @@ exports.insertAttendance = async (req, res) => {
         .status(400)
         .json({ status: "Validation Error", errors: error });
     }
+    const { id } = req.user;
+    const { date } = req.body;
+    const { studentId } = req.params;
 
-    const studentExists = await teacherOrStudent.findById(studentId);
+    const studentExists = await teacherOrStudent.findOne({
+      _id: studentId,
+      teacherId: id,
+    });
+
     if (!studentExists) {
-      return res.status(404).json({ message: "Student does not exist" });
-    }
-
-    if (!studentExists?.teacherId.equals(id)) {
       return res
-        .status(400)
-        .json({ message: "This is not your class student" });
+        .status(404)
+        .json({ message: "Student does not exist or is not assigned to you." });
     }
-
     const finalDate = date ? new Date(date) : new Date();
     const startOfDay = new Date(finalDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    startOfDay.setUTCHours(0, 0, 0, 0);
 
     const endOfDay = new Date(finalDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    endOfDay.setUTCHours(23, 59, 59, 999);
 
     const existAttendance = await attedance.findOne({
-      studentId,
+      studentId: studentId,
       date: { $gte: startOfDay, $lt: endOfDay },
     });
+
+    console.log(existAttendance);
+
     if (existAttendance) {
       return res.status(400).json({
         message: "Attendance for this student has already been recorded today.",
       });
     }
-
     const data = await attedance.create({
       ...req.body,
       studentId,
@@ -66,8 +65,6 @@ exports.insertAttendance = async (req, res) => {
 
 exports.updateAttedance = async (req, res) => {
   try {
-    const { id } = req.params;
-    const teacherId = req.user.id;
     const { error } = updateAttedanceValidation.validate(req.body, {
       abortEarly: false,
     });
@@ -77,20 +74,41 @@ exports.updateAttedance = async (req, res) => {
         .status(400)
         .json({ status: "Validation Error", errors: error });
     }
+    const { id } = req.params;
+    const teacherId = req.user.id;
+    // const findStudent = await attedance.findById(id).populate({
+    //   path: "studentId",
+    //   select: "teacherId",
+    //   model: "TeacherStudent",
+    // });
+    const findStudent = await attedance.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(id),
+        },
+      },
+      {
+        $lookup: {
+          from: "teacherstudents",
+          localField: "studentId",
+          foreignField: "_id",
+          as: "data",
+        },
+      },
+      {
+        $unwind: "$data",
+      },
+      {
+        $match: {
+          "data.teacherId": new mongoose.Types.ObjectId(teacherId),
+        },
+      },
+    ]);
 
-    const findStudent = await attedance.findById(id).populate({
-      path: "studentId",
-      model: "TeacherStudent",
-    });
     if (!findStudent) {
-      return res.status(400).json({ message: "Record not Exist" });
-    }
-    const findTeacherId = findStudent?.studentId?.teacherId;
-
-    if (!findTeacherId.equals(teacherId)) {
       return res
         .status(400)
-        .json({ message: "This is not your Class student" });
+        .json({ message: "Record not Exist or Otherwise not your student" });
     }
     const data = await attedance.findByIdAndUpdate(id, req.body, { new: true });
     res.status(200).json({ message: "Update success", data });
@@ -105,20 +123,49 @@ exports.deleteAttedance = async (req, res) => {
     const { id } = req.params;
     const teacherId = req.user.id;
 
-    const findStudent = await attedance.findById(id).populate({
-      path: "studentId",
-      model: "TeacherStudent",
-    });
+    // const findStudent = await attedance.findById(id).populate({
+    //   path: "studentId",
+    //   model: "TeacherStudent",
+    // });
+    // if (!findStudent) {
+    //   return res.status(400).json({ message: "Record not Exist" });
+    // }
+    // const findTeacherId = findStudent?.studentId?.teacherId;
+    // if (findTeacherId.equals(teacherId)) {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "This is not your Class student" });
+    // }
+
+    const findStudent = await attedance.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(id),
+        },
+      },
+      {
+        $lookup: {
+          from: "teacherstudents",
+          localField: "studentId",
+          foreignField: "_id",
+          as: "data",
+        },
+      },
+      {
+        $unwind: "$data",
+      },
+      {
+        $match: {
+          "data.teacherId": new mongoose.Types.ObjectId(teacherId),
+        },
+      },
+    ]);
+
     if (!findStudent) {
-      return res.status(400).json({ message: "Record not Exist" });
-    }
-    const findTeacherId = findStudent?.studentId?.teacherId;
-    if (findTeacherId.equals(teacherId)) {
       return res
         .status(400)
-        .json({ message: "This is not your Class student" });
+        .json({ message: "Record not Exist or Otherwise not your student" });
     }
-
     const data = await attedance.findByIdAndDelete(id);
     res.status(200).json({
       message: "Data Deleted Success",
@@ -130,11 +177,8 @@ exports.deleteAttedance = async (req, res) => {
   }
 };
 
-exports.getSingleStudent = async (req, res) => {
+exports.showStudentAttedanceRecordByMonth = async (req, res) => {
   try {
-    const { studentId } = req.params;
-    const { month } = req.body;
-
     const { error } = monthValidation.validate(req.body, {
       abortEarly: false,
     });
@@ -143,11 +187,11 @@ exports.getSingleStudent = async (req, res) => {
         .status(400)
         .json({ status: "Validation Error", errors: error });
     }
+    const { studentId } = req.params;
+    const { month } = req.body;
 
-    const currentYear = new Date().getFullYear();
-
-    const startDate = new Date(currentYear, month - 1, 1); // 2025-02-28
-    const endDate = new Date(currentYear, month, 0, 23, 59, 59);
+    const startDate = new Date(new Date().getFullYear(), month - 1, 1); // 2025-02-28
+    const endDate = new Date(new Date().getFullYear(), month, 0, 23, 59, 59);
 
     console.log(
       `Filtering attendance from ${startDate.toISOString()} to ${endDate.toISOString()}`
@@ -201,8 +245,14 @@ exports.showOwnStudentAttedance = async (req, res) => {
 
     const today = date ? new Date(date) : new Date();
 
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+    const startOfDay = new Date(today);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(today);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    console.log("Start of Day:", startOfDay.toISOString());
+    console.log("End of Day:", endOfDay.toISOString());
 
     const data = await attedance
       .find({

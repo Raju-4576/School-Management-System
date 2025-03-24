@@ -30,7 +30,7 @@ exports.insertFees = async (req, res) => {
 
     const total_fees = studentData?.teacherId?.classId?.fees;
 
-    const studentFees = await fees.find({ studentId: studentId });
+    const studentFees = await fees.find({ studentId: studentId })
 
     const previous_paid_fees = studentFees.reduce((total, fee) => {
       return total + (fee.paid_fees?.amt || 0);

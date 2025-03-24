@@ -8,7 +8,6 @@ const {
 } = require("../validation/adminValidation");
 exports.insertAdminData = async (req, res) => {
   try {
-    const { password, email } = req.body;
     const { error } = adminValidationSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -18,6 +17,7 @@ exports.insertAdminData = async (req, res) => {
         error: error,
       });
     }
+    const { password, email } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const existEmail = await admin.findOne({ email: email });
@@ -43,7 +43,6 @@ exports.insertAdminData = async (req, res) => {
 
 exports.adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
     const { error } = adminLoginValidationSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -53,6 +52,7 @@ exports.adminLogin = async (req, res) => {
         error: error,
       });
     }
+    const { email, password } = req.body;
     const data = await admin.findOne({ email });
     if (!data) {
       return res.status(404).json({
@@ -80,9 +80,6 @@ exports.adminLogin = async (req, res) => {
 
 exports.updateAdmin = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { password, email } = req.body;
-
     const { error } = adminUpdateJoiSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -92,7 +89,8 @@ exports.updateAdmin = async (req, res) => {
         error: error,
       });
     }
-
+    const { id } = req.params;
+    const { password, email } = req.body;
     if (email) {
       const existEmail = await admin.findOne({ email, _id: { $ne: id } });
       if (existEmail) {
@@ -128,6 +126,9 @@ exports.deleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
     const data = await admin.findByIdAndDelete(id);
+    if (!data || data.length === 0) {
+      return res.status(404).json({ message: "No record Exist" });
+    }
     res.status(200).json({
       message: "Delete success",
       data,
