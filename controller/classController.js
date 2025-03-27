@@ -2,11 +2,11 @@ const classes = require("../model/classmodel");
 const {
   classUpdateValidationSchema,
   classValidationSchema,
+  streamValidation
 } = require("../validation/classvalidation");
 
 exports.insertClass = async (req, res) => {
   try {
-    const { className } = req.body;
     const { error } = classValidationSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -16,6 +16,7 @@ exports.insertClass = async (req, res) => {
         errors: error,
       });
     }
+    const { className } = req.body;
     const existClass = await classes.findOne({ className });
     if (existClass) {
       return res
@@ -37,7 +38,19 @@ exports.insertClass = async (req, res) => {
 
 exports.getAllClass = async (req, res) => {
   try {
-    const data = await classes.find().select("className fees classStream -_id");
+    const {page} = req.query;
+    const data = await classes.aggregate([
+      { $skip: (page - 1) * 2 },
+      { $limit: 2 },
+      {
+        $project: {
+          className: 1,
+          classStream: 1,
+          _id: 0,
+          fees: 1,
+        },
+      },
+    ]);
 
     if (!data || data.length === 0) {
       return res.status(404).json({
@@ -59,8 +72,6 @@ exports.getAllClass = async (req, res) => {
 
 exports.updateClass = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { className } = req.body;
     const { error } = classUpdateValidationSchema.validate(req.body, {
       abortEarly: false,
     });
@@ -70,6 +81,8 @@ exports.updateClass = async (req, res) => {
         errors: error,
       });
     }
+    const { id } = req.params;
+    const { className } = req.body;
     const existClass = await classes.findOne({ className });
     if (existClass) {
       return res
@@ -115,13 +128,25 @@ exports.deleteClass = async (req, res) => {
 };
 exports.streamWise = async (req, res) => {
   try {
+
+    const { error } = streamValidation.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "Validataion Error",
+        errors: error,
+      });
+    }
     const { classStream } = req.body;
     if (!classStream) {
       return res.status(400).json({
         message: "Please Enter class stream Which you want",
       });
     }
-    const data = await classes.find({ classStream: classStream }).select("-_id className fees stream");
+    const data = await classes
+      .find({ classStream: classStream })
+      .select("-_id className fees stream");
     if (!data || data.length === 0) {
       return res.status(404).json({
         status: "error",
@@ -155,10 +180,9 @@ exports.findClass = async (req, res) => {
       filter.classStream = classStream;
     }
 
-    const data = await classes.find(filter);
+    const data = await classes.find(filter).select("className classStream  fees -_id");
     if (!data || data.length === 0) {
       return res.status(404).json({
-        status: "error",
         message: "No class records found in the database.",
       });
     }

@@ -262,6 +262,7 @@ exports.showOwnStudentAttedance = async (req, res) => {
         path: "studentId",
         model: "TeacherStudent",
         select: "name teacherId",
+        
       });
 
     if (!data.length) {
@@ -312,8 +313,11 @@ exports.allOverAbsentPresent = async (req, res) => {
     const { date } = req.body;
     const today = date ? new Date(date) : new Date();
 
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+    const startOfDay = new Date(today);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(today);
+    endOfDay.setUTCHours(23, 59, 59, 999);
 
     const data = await attedance
       .find({ date: { $gte: startOfDay, $lt: endOfDay } })

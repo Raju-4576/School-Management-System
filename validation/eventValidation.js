@@ -22,7 +22,8 @@ const eventJoiSchema = Joi.object({
 
   className: Joi.array()
     .items(
-      Joi.string().trim().min(2).max(30)
+      Joi.string().trim().min(2).max(30).pattern(/^(?:[1-9]|1[0-2])[A-Z]$/),
+
     )
     .min(1)
     .required(),
@@ -49,7 +50,8 @@ const eventUpdateJoiSchema = Joi.object({
 
   className: Joi.array()
     .items(
-      Joi.string().trim().min(2).max(30)
+      Joi.string().trim().min(2).max(30).pattern(/^(?:[1-9]|1[0-2])[A-Z]$/),
+
     )
     .min(1),
 });

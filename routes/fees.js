@@ -17,8 +17,6 @@ router.get('/findStudentRecord/:studentId',isTeacherOrStudent,feesController.sho
 router.delete('/deleteFees/:id',isAdmin,feesController.deleteFees)
 router.get('/remainingFeesStudent',isAdmin,feesController.findRemainingFees)
 router.get('/classWiseremainingFeesStudent',isTeacherOrAdmin,feesController.classWisefindRemainingFees)
-router.get('/statusWise',isAdmin,feesController.statusWise)
-router.get('/classWiseStatus',isAdmin,feesController.filterByClassAndStatus)
 
 
 module.exports = router;

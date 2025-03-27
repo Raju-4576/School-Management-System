@@ -22,4 +22,8 @@ const classUpdateValidationSchema = Joi.object({
     .min(4),
   classStream: Joi.string().valid(...streamdata),
 });
-module.exports = {classValidationSchema,classUpdateValidationSchema};
+
+const streamValidation = Joi.object({
+  classStream: Joi.string().valid(...streamdata).required(),
+});
+module.exports = {classValidationSchema,classUpdateValidationSchema,streamValidation};

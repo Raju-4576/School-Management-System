@@ -2,16 +2,12 @@ const fees = require("../model/feesModel");
 const {
   updateFeesSchema,
   feesJoiSchema,
-  statusValidation,
-  statusAndClassValidation,
+  classNamevalidation,
 } = require("../validation/feesvalidation");
 const teacherOrStudent = require("../model/teacherOrStudentmodel");
 
 exports.insertFees = async (req, res) => {
   try {
-    const { studentId } = req.params;
-    const { id } = req.user;
-    const { amt, paid_date, due_date } = req.body;
     const { error } = feesJoiSchema.validate(req.body, { abortEarly: false });
     if (error) {
       return res.status(400).json({
@@ -19,18 +15,25 @@ exports.insertFees = async (req, res) => {
         errors: error,
       });
     }
+    const { studentId } = req.params;
+    const { id } = req.user;
+    const { amt, paid_date, due_date } = req.body;
     const today = new Date();
     const futureDate = new Date(today);
     futureDate.setMonth(today.getMonth() + 2);
-    const studentData = await teacherOrStudent.findById(studentId).populate({
-      path: "teacherId",
-      model: "TeacherStudent",
-      populate: { path: "classId" },
-    });
-
+    const studentData = await teacherOrStudent
+      .findOne({ _id: studentId, role: "student" })
+      .populate({
+        path: "teacherId",
+        model: "TeacherStudent",
+        populate: { path: "classId" },
+      });
+    if (!studentData) {
+      return res.status(404).json({ message: "Student not found" });
+    }
     const total_fees = studentData?.teacherId?.classId?.fees;
 
-    const studentFees = await fees.find({ studentId: studentId })
+    const studentFees = await fees.find({ studentId: studentId });
 
     const previous_paid_fees = studentFees.reduce((total, fee) => {
       return total + (fee.paid_fees?.amt || 0);
@@ -49,14 +52,13 @@ exports.insertFees = async (req, res) => {
     const remain_fees = total_fees - total_paid_fees;
 
     let status = "";
-    if (paid_fees === 0) status = "pending";
+    if (paid_fees > 0 && remain_fees > 0) status = "partial";
     else if (remain_fees === 0) status = "paid";
-    else if (paid_fees > 0 && remain_fees > 0) status = "partial";
 
     const final_paid_date = paid_date ? new Date(paid_date) : today;
     const final_due_date = due_date ? new Date(due_date) : futureDate;
 
-    if (final_paid_date.getTime() >= final_due_date.getTime()) {
+    if (final_paid_date >= final_due_date) {
       return res.status(400).json({
         message: "Due date must be a future date.",
       });
@@ -89,23 +91,22 @@ exports.insertFees = async (req, res) => {
 
 exports.updateFees = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { amt, paid_date, due_date } = req.body;
     const { error } = updateFeesSchema.validate(req.body, {
       abortEarly: false,
     });
     if (error) {
       return res.status(400).json({
         message: "Validation Error",
-        errors: error.details.map((e) => e.message),
+        errors: error,
       });
     }
+    const { id } = req.params;
+    const { amt, paid_date, due_date } = req.body;
 
     const findData = await fees.findById(id);
     if (!findData) {
       return res.status(400).json({ message: "Data Not Found" });
     }
-    const stored_paid_date = findData.paid_fees.paid_date;
     const total_fees = findData.total_fees;
     const find_paid_fees = findData.total_paid_fees;
     const old_paid_fees = findData.paid_fees.amt;
@@ -133,7 +134,9 @@ exports.updateFees = async (req, res) => {
       "remain_fees.remain_amt": remain_fees,
     };
 
-    const final_paid_date = paid_date ? new Date(paid_date) : stored_paid_date;
+    const final_paid_date = paid_date
+      ? new Date(paid_date)
+      : findData.paid_fees.paid_date;
     if (paid_date) {
       updateFields["paid_fees.paid_date"] = final_paid_date;
     }
@@ -141,10 +144,7 @@ exports.updateFees = async (req, res) => {
     if (due_date) {
       const newDueDate = new Date(due_date);
 
-      if (
-        final_paid_date &&
-        newDueDate.getTime() <= new Date(final_paid_date).getTime()
-      ) {
+      if (newDueDate <= new Date(final_paid_date)) {
         return res.status(400).json({
           message: "Due date must be after the paid date.",
         });
@@ -205,20 +205,27 @@ exports.deleteFees = async (req, res) => {
 exports.showFeesStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
+    if (!studentId) {
+      return res.status(400).json({ message: "Student Not Found" });
+    }
     const data = await fees
       .find({ studentId })
       .sort({ "paid_fees.paid_date": -1 });
 
-    const lastRecord = data.length > 0 ? data[0] : null;
-
+    if (data.length === 0 || !data) {
+      res.status(404).json({ message: "No data found" });
+    }
+    console.log(data[0]);
+    
     res.status(200).json({
       message: "Find success",
-      total_fees: lastRecord ? lastRecord.total_fees : 0,
-      total_paid_fees: lastRecord ? lastRecord.total_paid_fees : 0,
-      total_remain_fees: lastRecord ? lastRecord.remain_fees?.remain_amt : 0,
-      Installment: data.map((item) => ({
+      total_fees: data[0]?.total_fees,
+      total_paid_fees: data[0]?.total_paid_fees,
+      yourStatus: data[0]?.status,
+      total_remain_fees: data[0]?.remain_fees.remain_amt,
+      installment: data.map((item) => ({
         Amount: item.paid_fees.amt,
-        paid_date: item.paid_fees.paid_date,
+        paid_date: item.paid_fees.paid_date.toISOString().slice(0, 10),
       })),
     });
   } catch (error) {
@@ -229,28 +236,110 @@ exports.showFeesStudent = async (req, res) => {
 
 exports.findRemainingFees = async (req, res) => {
   try {
-    const paid_fees_students = await fees.find().select("studentId -_id");
+    const partialPaidstudents = await fees.aggregate([
+      {
+        $sort: { "paid_fees.paid_date": -1 },
+      },
+      {
+        $group: {
+          _id: "$studentId",
+          latestFeeRecord: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $match: {
+          "latestFeeRecord.status": { $in: ["PARTIAL", "OVERDUE"] },
+        },
+      },
+      {
+        $lookup: {
+          from: "teacherstudents",
+          localField: "_id",
+          foreignField: "_id",
+          as: "student",
+        },
+      },
+      { $unwind: "$student" },
+      {
+        $lookup: {
+          from: "teacherstudents",
+          localField: "student.teacherId",
+          foreignField: "_id",
+          as: "teacher",
+        },
+      },
+      { $unwind: "$teacher" },
+      {
+        $lookup: {
+          from: "classes",
+          localField: "teacher.classId",
+          foreignField: "_id",
+          as: "class",
+        },
+      },
+      { $unwind: "$class" },
+      {
+        $project: {
+          _id: 1,
+          "latestFeeRecord.total_fees": 1,
+          "latestFeeRecord.total_paid_fees": 1,
+          "latestFeeRecord.remain_fees.remain_amt": 1,
+          "student.name": 1,
+          "teacher.name": 1,
+          "class.className": 1,
+        },
+      },
+    ]);
 
-    if (!paid_fees_students || paid_fees_students.length === 0) {
-      return res.status(400).json({ message: "Not found Any student" });
+    if (partialPaidstudents.length === 0 || !partialPaidstudents) {
+      return res
+        .status(404)
+        .json({ message: "No data Found for Partial paid Student" });
     }
 
-    const paidStudentIds = [
-      ...new Set(
-        paid_fees_students.map((student) => student.studentId.toString())
-      ),
-    ];
-
-    const unpaidStudents = await teacherOrStudent
-      .find({ _id: { $nin: paidStudentIds } })
+    const completelyRemainFeesStudent = await teacherOrStudent
+      .find({
+        _id: { $nin: partialPaidstudents.map((s) => s._id) },
+        role: "student",
+      })
       .select("name -_id")
       .populate({
         path: "teacherId",
-        select: "-_id name",
-        populate: { path: "classId", select: "className -_id" },
+        select: "name -_id",
+        populate: { path: "classId", select: "-_id className fees" },
       });
 
-    res.status(200).json({ message: "success", unpaidStudents });
+    if (
+      completelyRemainFeesStudent.length === 0 ||
+      !completelyRemainFeesStudent
+    ) {
+      return res
+        .status(404)
+        .json({ message: "No Any student for completely remain fees" });
+    }
+    const partialStudentList = partialPaidstudents.map((student) => ({
+      studentName: student?.student?.name,
+      className: student?.class?.className,
+      teacherName: student?.teacher?.name,
+      total_fees: student?.latestFeeRecord?.total_fees,
+      total_paid_fees: student?.latestFeeRecord?.total_paid_fees,
+      total_remain_amt: student?.latestFeeRecord?.remain_fees?.remain_amt,
+    }));
+
+    const completelyRemainFeesStudentList = completelyRemainFeesStudent.map(
+      (student) => ({
+        studentName: student?.name,
+        teacherName: student?.teacherId?.name,
+        className: student?.teacherId?.classId?.className,
+        remain_fees: student?.teacherId?.classId?.fees,
+      })
+    );
+
+    res.status(200).json({
+      message: "success",
+      partialStudentList,
+      completelyRemainFeesStudentList,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
@@ -259,145 +348,156 @@ exports.findRemainingFees = async (req, res) => {
 
 exports.classWisefindRemainingFees = async (req, res) => {
   try {
-    const { id } = req.user;
-    const paid_fees_students = await fees.find().select("studentId -_id");
-
-    if (!paid_fees_students || paid_fees_students.length === 0) {
-      return res.status(400).json({ message: "Not found Any student" });
-    }
-
-    const paidStudentIds = [
-      ...new Set(
-        paid_fees_students.map((student) => student.studentId.toString())
-      ),
-    ];
-
-    const unpaidStudents = await teacherOrStudent
-      .find({ teacherId: id, _id: { $nin: paidStudentIds } })
-      .select("name -_id")
-      .populate({
-        path: "teacherId",
-        select: "-_id name",
-        populate: { path: "classId", select: "className -_id" },
+    const { error } = classNamevalidation.validate(req.body, {
+      abortEarly: false,
+    });
+    if (error) {
+      return res.status(400).json({
+        message: "Validation Error",
+        errors: error,
       });
+    }
+    const { className } = req.body;
+    // const partialPaidstudents = await fees.aggregate([
+    //   {
+    //     $group: {
+    //       _id: "$studentId",
+    //       count: { $sum: 1 },
+    //       latestFeeRecord: {
+    //         $top: {
+    //           output: ["$$ROOT"],
+    //           sortBy: { "paid_fees.paid_date": -1 },
+    //         },
+    //       },
+    //     },
+    //   },
+    //   {
+    //     $match: {
+    //       "latestFeeRecord.status": { $in: ["PARTIAL", "OVERDUE"] },
+    //     },
+    //   },
+    //   {
+    //     $lookup: {
+    //       from: "teacherstudents",
+    //       localField: "_id",
+    //       foreignField: "_id",
+    //       as: "student",
+    //     },
+    //   },
+    //   { $unwind: "$student" },
+    //   {
+    //     $lookup: {
+    //       from: "teacherstudents",
+    //       localField: "student.teacherId",
+    //       foreignField: "_id",
+    //       as: "teacher",
+    //     },
+    //   },
+    //   { $unwind: "$teacher" },
+    //   {
+    //     $lookup: {
+    //       from: "classes",
+    //       localField: "teacher.classId",
+    //       foreignField: "_id",
+    //       as: "class",
+    //     },
+    //   },
+    //   { $unwind: "$class" },
+    //   { $match: { "class.className": className } },
+    //   {
+    //     $project: {
+    //       _id: 1,
+    //       "latestFeeRecord.total_fees": 1,
+    //       "latestFeeRecord.total_paid_fees": 1,
+    //       "latestFeeRecord.remain_fees.remain_amt": 1,
+    //       "student.name": 1,
+    //       "teacher.name": 1,
+    //       "class.className": 1,
+    //     },
+    //   },
+    // ]);
 
+    const partialPaidstudents = await fees.aggregate([
+      {
+        $group: {
+          _id: "$studentId",
+          lastField: { $last: "$$ROOT" }
+        }
+      },
+      {
+        $lookup: {
+          from: "teacherstudents",
+          localField: "_id",
+          foreignField: "_id",
+          as: "student"
+        }
+      },
+      { $unwind: "$student" },
+      {
+        $lookup: {
+          from: "teacherstudents",
+          localField: "student.teacherId",
+          foreignField: "_id",
+          as: "teacher"
+        }
+      },
+      { $unwind: "$teacher" },
+      {
+        $lookup: {
+          from: "classes",
+          localField: "teacher.classId",
+          foreignField: "_id",
+          as: "class"
+        }
+      },
+      { $unwind: "$class" },
+      {
+        $project: {
+          _id: 0,
+          studentName: "$student.name",
+          teacherName: "$teacher.name",
+          className: "$class.className",
+          remain_fees: "$lastField.remain_fees.remain_amt"
+        }
+      },
+      {
+        $facet: {
+          partialPaidStudents: [
+            {
+              $match: { remain_fees: { $gt: 0 } }
+            }
+          ]
+        }
+      }
+    ]);
+    
+    // res.status(200).json({
+    //   message: "success",
+    //   partialPaidStudents: partialPaidstudents[0].partialPaidStudents || []
+    // });
+    
+    // const completelyRemainFeesStudent = await teacherOrStudent
+    //   .find({
+    //     _id: { $nin: partialPaidstudents.map((s) => s._id) },
+    //     role: "student",
+    //     "teacherId.classId.className": className,
+    //   })
+    //   .select("name -_id")
+    //   .populate({
+    //     path: "teacherId",
+    //     select: "name -_id",
+    //     populate: {
+    //       path: "classId",
+    //       select: "-_id className fees",
+    //     },
+    //   });
     res.status(200).json({
       message: "success",
-      totalStudent: unpaidStudents.length,
-      className: unpaidStudents[0]?.teacherId?.classId?.className,
-      INFO: unpaidStudents.map((item) => ({
-        studentName: item?.name,
-      })),
+      partialPaidstudents,
+      // completelyRemainFeesStudent,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-exports.statusWise = async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    const { error } = statusValidation.validate(req.body, {
-      abortEarly: false,
-    });
-    if (error) {
-      return res.status(400).json({
-        message: "Validation Error",
-        errors: error,
-      });
-    }
-
-    const data = await fees
-      .find({ status })
-      .select("-_id total_paid_fees remain_fees.remain_amt")
-      .populate({
-        path: "studentId",
-        select: "name -_id ",
-        model: "TeacherStudent",
-        populate: {
-          path: "teacherId",
-          select: "name -_id",
-          populate: {
-            path: "classId",
-            select: "className -_id",
-          },
-        },
-      });
-
-    if (!data || data.length === 0) {
-      return res.status(404).json({ message: "Data not found" });
-    }
-
-    res.status(200).json({
-      message: "Success",
-      student: data.map((student) => ({
-        status: status,
-        studentName: student?.studentId?.name,
-        remainFees: student?.remain_fees?.remain_amt,
-        total_paid_fees: student?.total_paid_fees,
-        className: student?.studentId?.teacherId?.classId?.className,
-        teacherName: student?.studentId?.teacherId?.name,
-      })),
-    });
-  } catch (error) {
-    console.error("Error in statusWise:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-exports.filterByClassAndStatus = async (req, res) => {
-  try {
-    const { className, status } = req.body;
-
-    const { error } = statusAndClassValidation.validate(req.body, {
-      abortEarly: false,
-    });
-    if (error) {
-      return res.status(400).json({
-        message: "Validation Error",
-        errors: error,
-      });
-    }
-
-    const students = await fees.find({ status }).populate({
-      path: "studentId",
-      select: "name -_id",
-      model: "TeacherStudent",
-      populate: {
-        path: "teacherId",
-        select: "name -_id",
-        model: "TeacherStudent",
-        populate: {
-          path: "classId",
-          select: "className -_id",
-        },
-      },
-    });
-
-    const filteredStudents = students.filter(
-      (student) =>
-        student?.studentId?.teacherId?.classId?.className === className
-    );
-
-    if (filteredStudents.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No students found for the given criteria" });
-    }
-
-    res.status(200).json({
-      message: "Success",
-      students: filteredStudents.map((student) => ({
-        studentName: student.studentId.name,
-        status: student.status,
-        remainFees: student?.remain_fees?.remain_amt,
-        totalPaidFees: student.total_paid_fees,
-        teacherName: student?.studentId?.teacherId?.name,
-      })),
-    });
-  } catch (error) {
-    console.error("Error in filterByClassAndStatus:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
