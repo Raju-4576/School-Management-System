@@ -2,7 +2,7 @@ const classes = require("../model/classmodel");
 const {
   classUpdateValidationSchema,
   classValidationSchema,
-  streamValidation
+  streamValidation,
 } = require("../validation/classvalidation");
 
 exports.insertClass = async (req, res) => {
@@ -38,10 +38,10 @@ exports.insertClass = async (req, res) => {
 
 exports.getAllClass = async (req, res) => {
   try {
-    const {page} = req.query;
+    const { page } = req.query;
     const data = await classes.aggregate([
       { $skip: (page - 1) * 2 },
-      { $limit: 2 },
+      { $limit: limit },
       {
         $project: {
           className: 1,
@@ -128,7 +128,6 @@ exports.deleteClass = async (req, res) => {
 };
 exports.streamWise = async (req, res) => {
   try {
-
     const { error } = streamValidation.validate(req.body, {
       abortEarly: false,
     });
@@ -180,7 +179,9 @@ exports.findClass = async (req, res) => {
       filter.classStream = classStream;
     }
 
-    const data = await classes.find(filter).select("className classStream  fees -_id");
+    const data = await classes
+      .find(filter)
+      .select("className classStream  fees -_id");
     if (!data || data.length === 0) {
       return res.status(404).json({
         message: "No class records found in the database.",
